@@ -6,9 +6,9 @@ module NSelect
   , HTML
   , Slot
   , raise
+  , setRootProps
   , setToggleProps
   , setInputProps
-  , setContainerProps
   , setItemProps
   , component
   ) where
@@ -41,12 +41,11 @@ data Query pq m a
   = Init a
   | OnReceiveProps (Props pq m) a
   | OnWindowMouseDown a
+  | OnMouseDownRoot a
+  | OnMouseUpRoot a
   | OnMouseDownToggle a
-  | OnMouseUpToggle a
   | OnKeyDownInput KE.KeyboardEvent a
   | OnMouseDownInput a
-  | OnMouseDownContainer a
-  | OnMouseUpContainer a
   | OnMouseDownItem Int a
   | OnMouseEnterItem Int a
   | Raise (pq Unit) a
@@ -83,9 +82,24 @@ type DSL pq m = H.HalogenM (State pq m) (Query pq m) () (Message pq) m
 
 type Slot f m s = H.Slot (Query f m) (Message f) s
 
-type ToggleProps r =
+type RootProps r =
   ( onMouseDown :: ME.MouseEvent
   , onMouseUp :: ME.MouseEvent
+  | r
+  )
+
+-- Click outside the root will set `open` to false.
+setRootProps
+  :: forall pq m r
+   . Array (HH.IProp (RootProps r) (Query pq m Unit))
+  -> Array (HH.IProp (RootProps r) (Query pq m Unit))
+setRootProps props = props <>
+  [ HE.onMouseDown $ HE.input_ OnMouseDownRoot
+  , HE.onMouseUp $ HE.input_ OnMouseUpRoot
+  ]
+
+type ToggleProps r =
+  ( onMouseDown :: ME.MouseEvent
   | r
   )
 
@@ -95,7 +109,6 @@ setToggleProps
   -> Array (HH.IProp (ToggleProps r) (Query pq m Unit))
 setToggleProps props = props <>
   [ HE.onMouseDown $ HE.input_ OnMouseDownToggle
-  , HE.onMouseUp $ HE.input_ OnMouseUpToggle
   ]
 
 type InputProps r =
@@ -111,21 +124,6 @@ setInputProps
 setInputProps props = props <>
   [ HE.onMouseDown $ HE.input_ OnMouseDownInput
   , HE.onKeyDown $ HE.input OnKeyDownInput
-  ]
-
-type ContainerProps r =
-  ( onMouseDown :: ME.MouseEvent
-  , onMouseUp :: ME.MouseEvent
-  | r
-  )
-
-setContainerProps
-  :: forall pq m r
-   . Array (HH.IProp (ContainerProps r) (Query pq m Unit))
-  -> Array (HH.IProp (ContainerProps r) (Query pq m Unit))
-setContainerProps props = props <>
-  [ HE.onMouseDown $ HE.input_ OnMouseDownContainer
-  , HE.onMouseUp $ HE.input_ OnMouseUpContainer
   ]
 
 type ItemProps r =
@@ -182,15 +180,15 @@ component = H.component
   eval (Raise pq n) = n <$ do
     H.raise $ Emit pq
 
+  eval (OnMouseDownRoot n) = n <$ do
+    H.modify_ $ _ { clickedInside = true }
+
+  eval (OnMouseUpRoot n) = n <$ do
+    H.modify_ $ _ { clickedInside = false }
+
   eval (OnMouseDownToggle n) = n <$ do
     H.modify_ \s -> s
       { open = not s.open
-      , clickedInside = true
-      }
-
-  eval (OnMouseUpToggle n) = n <$ do
-    H.modify_ $ _
-      { clickedInside = false
       }
 
   eval (OnKeyDownInput kbEvent n) = n <$ do
@@ -210,19 +208,11 @@ component = H.component
       _ -> pure unit
 
   eval (OnMouseDownInput n) = n <$ do
-    H.modify_ \s -> s
+    H.modify_ $ _
       { open = true
-      , clickedInside = true
       }
 
-  eval (OnMouseDownContainer n) = n <$ do
-    H.modify_ $ _ { clickedInside = true }
-
-  eval (OnMouseUpContainer n) = n <$ do
-    H.modify_ $ _ { clickedInside = false }
-
   eval (OnMouseDownItem index n) = n <$ do
-    H.modify_ $ _ { clickedInside = true }
     H.raise $ Selected index
 
   eval (OnMouseEnterItem index n) = n <$ do
