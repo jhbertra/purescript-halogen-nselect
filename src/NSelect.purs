@@ -9,6 +9,7 @@ module NSelect
   , setToggleProps
   , setInputProps
   , setContainerProps
+  , setItemProps
   , component
   ) where
 
@@ -46,6 +47,8 @@ data Query pq m a
   | OnMouseDownInput a
   | OnMouseDownContainer a
   | OnMouseUpContainer a
+  | OnMouseDownItem Int a
+  | OnMouseEnterItem Int a
   | Raise (pq Unit) a
 
 type State pq m =
@@ -125,6 +128,22 @@ setContainerProps props = props <>
   , HE.onMouseUp $ HE.input_ OnMouseUpContainer
   ]
 
+type ItemProps r =
+  ( onMouseDown :: ME.MouseEvent
+  , onMouseEnter :: ME.MouseEvent
+  | r
+  )
+
+setItemProps
+  :: forall pq m r
+   . Int
+  -> Array (HH.IProp (ItemProps r) (Query pq m Unit))
+  -> Array (HH.IProp (ItemProps r) (Query pq m Unit))
+setItemProps index props = props <>
+  [ HE.onMouseDown $ HE.input_ $ OnMouseDownItem index
+  , HE.onMouseEnter $ HE.input_ $ OnMouseEnterItem index
+  ]
+
 raise :: forall pq m a. pq Unit -> a -> Query pq m a
 raise f = Raise f
 
@@ -201,3 +220,12 @@ component = H.component
 
   eval (OnMouseUpContainer n) = n <$ do
     H.modify_ $ _ { clickedInside = false }
+
+  eval (OnMouseDownItem index n) = n <$ do
+    H.modify_ $ _ { clickedInside = true }
+    H.raise $ Selected index
+
+  eval (OnMouseEnterItem index n) = n <$ do
+    H.modify_ $ _
+      { highlightedIndex = index
+      }
