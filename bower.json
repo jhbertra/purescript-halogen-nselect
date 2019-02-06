@@ -1,0 +1,25 @@
+{
+  "name": "purescript-halogen-nselect",
+  "description": "aNother select library in purescript halogen",
+  "authors": [
+    "Ping Chen <remotenonsense@gmail.com>"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/nonbili/purescript-halogen-nselect.git"
+  },
+  "license": "BSD-3-Clause",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "output"
+  ],
+  "dependencies": {
+    "purescript-halogen": "https://github.com/slamdata/purescript-halogen.git#e43096ccde699f68f1803acd23bab493a7190e2c"
+  },
+  "devDependencies": {
+    "purescript-jest": "^0.2.0",
+    "purescript-psci-support": "^4.0.0"
+  }
+}
