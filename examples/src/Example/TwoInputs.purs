@@ -13,9 +13,12 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import NSelect as Select
+import Web.Event.Event as Event
+import Web.UIEvent.KeyboardEvent as KE
 
 data Query a
-  = HandleDropdown DropdownSlot (Select.Message Query) a
+  = OnKeyDownInput DropdownSlot KE.KeyboardEvent a
+  | HandleDropdown DropdownSlot (Select.Message Query) a
 
 type State =
   { from :: String
@@ -62,7 +65,9 @@ renderSelect state slot st =
   ( Select.setRootProps []
   ) $ join
   [ pure $ HH.input
-    ( Select.setInputProps
+    ( Select.setInputProps'
+      { onKeyDown: \e -> OnKeyDownInput slot e unit
+      }
       [ HP.value value
       ]
     )
@@ -111,6 +116,14 @@ component = H.component
   }
   where
   eval :: Query ~> DSL
+  eval (OnKeyDownInput slot kbEvent n) = n <$ do
+    let event = KE.toEvent kbEvent
+    case KE.key kbEvent of
+      "Tab" -> do
+        H.liftEffect $ Event.preventDefault event
+        void $ H.query _dropdown slot $ H.action Select.select
+      _ -> pure unit
+
   eval (HandleDropdown slot msg n) = n <$ case msg of
     Select.Selected index -> do
       state <- H.get

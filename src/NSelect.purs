@@ -5,14 +5,17 @@ module NSelect
   , RenderState
   , HTML
   , Slot
-  , close
-  , focus
-  , raise
+  , KeyDownHandler
   , setRootProps
   , setToggleProps
   , setInputProps
+  , setInputProps'
   , setItemProps
   , component
+  , close
+  , focus
+  , raise
+  , select
   ) where
 
 import Prelude
@@ -54,12 +57,14 @@ data Query pq m a
   | OnMouseDownToggle a
   | OnFocusInput a
   | OnKeyDownInput KE.KeyboardEvent a
+  | OnKeyDownInput' (KeyDownHandler pq) KE.KeyboardEvent a
   | OnMouseDownInput a
   | OnMouseDownItem Int a
   | OnMouseEnterItem Int a
   | OnValueInput String a
   | Close a
   | Focus a
+  | Select a
   | Raise (pq Unit) a
 
 type State pq m =
@@ -136,17 +141,37 @@ type InputProps r =
 inputRef :: H.RefLabel
 inputRef = H.RefLabel "__nselect_input"
 
-setInputProps
+sharedInputProps
   :: forall pq m r
    . Array (HH.IProp (InputProps r) (Query pq m Unit))
-  -> Array (HH.IProp (InputProps r) (Query pq m Unit))
-setInputProps props = props <>
+sharedInputProps =
   [ HP.type_ HP.InputText
   , HP.ref inputRef
   , HE.onFocus $ HE.input_ OnFocusInput
   , HE.onMouseDown $ HE.input_ OnMouseDownInput
-  , HE.onKeyDown $ HE.input OnKeyDownInput
   , HE.onValueInput $ HE.input OnValueInput
+  ]
+
+setInputProps
+  :: forall pq m r
+   . Array (HH.IProp (InputProps r) (Query pq m Unit))
+  -> Array (HH.IProp (InputProps r) (Query pq m Unit))
+setInputProps props = props <> sharedInputProps <>
+  [ HE.onKeyDown $ HE.input OnKeyDownInput
+  ]
+
+type KeyDownHandler pq = KE.KeyboardEvent -> pq Unit
+
+-- | setInputProps' does everything setInputProps does, but also pass the
+-- | keyboardEvent back to the parent component, so the parent can handle more
+-- | key bindings like Tab.
+setInputProps'
+  :: forall pq m r
+   . { onKeyDown :: KeyDownHandler pq }
+  -> Array (HH.IProp (InputProps r) (Query pq m Unit))
+  -> Array (HH.IProp (InputProps r) (Query pq m Unit))
+setInputProps' parentHandlers props = props <> sharedInputProps <>
+  [ HE.onKeyDown $ HE.input $ OnKeyDownInput' parentHandlers.onKeyDown
   ]
 
 type ItemProps r =
@@ -164,15 +189,6 @@ setItemProps index props = props <>
   [ HE.onMouseDown $ HE.input_ $ OnMouseDownItem index
   , HE.onMouseEnter $ HE.input_ $ OnMouseEnterItem index
   ]
-
-close :: forall pq m a. a -> Query pq m a
-close = Close
-
-focus :: forall pq m a. a -> Query pq m a
-focus = Focus
-
-raise :: forall pq m a. pq Unit -> a -> Query pq m a
-raise f = Raise f
 
 render :: forall pq m. State pq m -> HTML pq m
 render state =
@@ -234,6 +250,10 @@ component = H.component
       "Enter" -> H.gets _.highlightedIndex >>= H.raise <<< Selected
       _ -> pure unit
 
+  eval (OnKeyDownInput' parentOnKeyDown kbEvent n) = n <$ do
+    eval (OnKeyDownInput kbEvent unit)
+    H.raise $ Emit $ parentOnKeyDown kbEvent
+
   eval (OnMouseDownInput n) = n <$ do
     H.modify_ $ _ { open = true }
 
@@ -256,5 +276,24 @@ component = H.component
       H.liftAff $ Aff.delay $ Aff.Milliseconds 0.0
       H.liftEffect $ HTMLElement.focus el
 
+  eval (Select n) = n <$ do
+    H.gets _.highlightedIndex >>= H.raise <<< Selected
+
   eval (Raise pq n) = n <$ do
     H.raise $ Emit pq
+
+
+-- | Following are helpers so that you can query from the parent component.
+-- | Query(..) are exposed in case you want to override the whole
+-- | `setInputProps` behavior. Normally these helpers are enough.
+close :: forall pq m a. a -> Query pq m a
+close = Close
+
+focus :: forall pq m a. a -> Query pq m a
+focus = Focus
+
+raise :: forall pq m a. pq Unit -> a -> Query pq m a
+raise f = Raise f
+
+select :: forall pq m a. a -> Query pq m a
+select = Select
