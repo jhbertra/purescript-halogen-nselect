@@ -15,8 +15,7 @@ import Halogen.HTML.Properties as HP
 import NSelect as Select
 
 data Query a
-  = OnInput String a
-  | HandleDropdown (Select.Message Query) a
+  = HandleDropdown (Select.Message Query) a
 
 type State =
   { value :: String
@@ -58,7 +57,6 @@ renderSelect state st =
   [ pure $ HH.input
     ( Select.setInputProps
       [ HP.value state.value
-      , HE.onValueInput $ HE.input \v -> Select.raise $ OnInput v unit
       ]
     )
   , guard st.open $> HH.div_
@@ -98,13 +96,12 @@ component = H.component
   }
   where
   eval :: Query ~> DSL
-  eval (OnInput value n) = n <$ do
-    H.modify_ $ _ { value = value }
-
   eval (HandleDropdown msg n) = n <$ case msg of
     Select.Selected index -> do
       state <- H.get
       for_ (Array.index state.items index) \item ->
         H.modify_ $ _ { value = item }
       void $ H.query _dropdown unit $ H.action Select.close
+    Select.ValueChanged value -> do
+      H.modify_ $ _ { value = value }
     Select.Emit q -> eval q

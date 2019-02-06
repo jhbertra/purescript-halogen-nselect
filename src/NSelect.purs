@@ -1,11 +1,12 @@
 module NSelect
   ( Props
   , Message(..)
-  , Query
+  , Query(..)
   , RenderState
   , HTML
   , Slot
   , close
+  , focus
   , raise
   , setRootProps
   , setToggleProps
@@ -16,15 +17,20 @@ module NSelect
 
 import Prelude
 
+import Data.Foldable (traverse_)
 import Data.Maybe (Maybe(..))
+import Effect.Aff as Aff
 import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
+import Halogen.HTML.Properties as HP
 import Halogen.Query.EventSource as ES
 import Web.Event.Event as Event
 import Web.HTML as Web
+import Web.HTML.HTMLElement as HTMLElement
 import Web.HTML.Window as Window
+import Web.UIEvent.FocusEvent (FocusEvent)
 import Web.UIEvent.KeyboardEvent as KE
 import Web.UIEvent.MouseEvent as ME
 import Web.UIEvent.MouseEvent.EventTypes as ET
@@ -36,6 +42,7 @@ type Props pq m =
 
 data Message pq
   = Selected Int
+  | ValueChanged String
   | Emit (pq Unit)
 
 data Query pq m a
@@ -45,11 +52,14 @@ data Query pq m a
   | OnMouseDownRoot a
   | OnMouseUpRoot a
   | OnMouseDownToggle a
+  | OnFocusInput a
   | OnKeyDownInput KE.KeyboardEvent a
   | OnMouseDownInput a
   | OnMouseDownItem Int a
   | OnMouseEnterItem Int a
+  | OnValueInput String a
   | Close a
+  | Focus a
   | Raise (pq Unit) a
 
 type State pq m =
@@ -114,18 +124,29 @@ setToggleProps props = props <>
   ]
 
 type InputProps r =
-  ( onMouseDown :: ME.MouseEvent
+  ( type :: HP.InputType
+  , value :: String
+  , onFocus :: FocusEvent
+  , onMouseDown :: ME.MouseEvent
   , onKeyDown :: KE.KeyboardEvent
+  , onInput :: Event.Event
   | r
   )
+
+inputRef :: H.RefLabel
+inputRef = H.RefLabel "__nselect_input"
 
 setInputProps
   :: forall pq m r
    . Array (HH.IProp (InputProps r) (Query pq m Unit))
   -> Array (HH.IProp (InputProps r) (Query pq m Unit))
 setInputProps props = props <>
-  [ HE.onMouseDown $ HE.input_ OnMouseDownInput
+  [ HP.type_ HP.InputText
+  , HP.ref inputRef
+  , HE.onFocus $ HE.input_ OnFocusInput
+  , HE.onMouseDown $ HE.input_ OnMouseDownInput
   , HE.onKeyDown $ HE.input OnKeyDownInput
+  , HE.onValueInput $ HE.input OnValueInput
   ]
 
 type ItemProps r =
@@ -146,6 +167,9 @@ setItemProps index props = props <>
 
 close :: forall pq m a. a -> Query pq m a
 close = Close
+
+focus :: forall pq m a. a -> Query pq m a
+focus = Focus
 
 raise :: forall pq m a. pq Unit -> a -> Query pq m a
 raise f = Raise f
@@ -191,6 +215,9 @@ component = H.component
   eval (OnMouseDownToggle n) = n <$ do
     H.modify_ \s -> s { open = not s.open }
 
+  eval (OnFocusInput n) = n <$ do
+    H.modify_ $ _ { open = true }
+
   eval (OnKeyDownInput kbEvent n) = n <$ do
     let event = KE.toEvent kbEvent
     case KE.key kbEvent of
@@ -218,8 +245,16 @@ component = H.component
       { highlightedIndex = index
       }
 
+  eval (OnValueInput value n) = n <$ do
+    H.raise $ ValueChanged value
+
   eval (Close n) = n <$ do
     H.modify_ $ _ { open = false }
+
+  eval (Focus n) = n <$ do
+    H.getHTMLElementRef inputRef >>= traverse_ \el -> do
+      H.liftAff $ Aff.delay $ Aff.Milliseconds 0.0
+      H.liftEffect $ HTMLElement.focus el
 
   eval (Raise pq n) = n <$ do
     H.raise $ Emit pq

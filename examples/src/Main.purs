@@ -8,6 +8,7 @@ import Effect (Effect)
 import Effect.Aff (Aff)
 import Example.Dropdown as ExpDropdown
 import Example.Autocomplete as ExpAutocomplete
+import Example.TwoInputs as ExpTwoInputs
 import Foreign.Object as Object
 import Halogen.Aff as HA
 import Halogen.Storybook (Stories, runStorybook, proxy)
@@ -16,6 +17,7 @@ stories :: Stories Aff
 stories = Object.fromFoldable
   [ Tuple "Dropdown" $ proxy ExpDropdown.component
   , Tuple "Autocomplete" $ proxy ExpAutocomplete.component
+  , Tuple "Two inputs" $ proxy ExpTwoInputs.component
   ]
 
 main :: Effect Unit

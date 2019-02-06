@@ -79,5 +79,5 @@ component = H.component
 
   eval (HandleDropdown msg n) = n <$ do
     case msg of
-      Select.Selected _ -> pure unit
       Select.Emit q -> eval q
+      _ -> pure unit
