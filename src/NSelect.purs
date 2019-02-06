@@ -5,6 +5,7 @@ module NSelect
   , RenderState
   , HTML
   , Slot
+  , close
   , raise
   , setRootProps
   , setToggleProps
@@ -39,7 +40,7 @@ data Message pq
 
 data Query pq m a
   = Init a
-  | OnReceiveProps (Props pq m) a
+  | ReceiveProps (Props pq m) a
   | OnWindowMouseDown a
   | OnMouseDownRoot a
   | OnMouseUpRoot a
@@ -48,6 +49,7 @@ data Query pq m a
   | OnMouseDownInput a
   | OnMouseDownItem Int a
   | OnMouseEnterItem Int a
+  | Close a
   | Raise (pq Unit) a
 
 type State pq m =
@@ -142,6 +144,9 @@ setItemProps index props = props <>
   , HE.onMouseEnter $ HE.input_ $ OnMouseEnterItem index
   ]
 
+close :: forall pq m a. a -> Query pq m a
+close = Close
+
 raise :: forall pq m a. pq Unit -> a -> Query pq m a
 raise f = Raise f
 
@@ -157,7 +162,7 @@ component = H.component
   { initialState
   , render
   , eval
-  , receiver: HE.input OnReceiveProps
+  , receiver: HE.input ReceiveProps
   , initializer: Just $ H.action Init
   , finalizer: Nothing
   }
@@ -169,16 +174,13 @@ component = H.component
       ES.eventListenerEventSource ET.mousedown (Window.toEventTarget win)
         (const $ Just $ H.action OnWindowMouseDown)
 
+  eval (ReceiveProps props n) = n <$ do
+    H.modify_ $ _ { props = props }
+
   eval (OnWindowMouseDown n) = n <$ do
     state <- H.get
     when (not state.clickedInside && state.open) $
       H.modify_ $ _ { open = false }
-
-  eval (OnReceiveProps props n) = n <$ do
-    H.modify_ $ _ { props = props }
-
-  eval (Raise pq n) = n <$ do
-    H.raise $ Emit pq
 
   eval (OnMouseDownRoot n) = n <$ do
     H.modify_ $ _ { clickedInside = true }
@@ -187,9 +189,7 @@ component = H.component
     H.modify_ $ _ { clickedInside = false }
 
   eval (OnMouseDownToggle n) = n <$ do
-    H.modify_ \s -> s
-      { open = not s.open
-      }
+    H.modify_ \s -> s { open = not s.open }
 
   eval (OnKeyDownInput kbEvent n) = n <$ do
     let event = KE.toEvent kbEvent
@@ -208,9 +208,7 @@ component = H.component
       _ -> pure unit
 
   eval (OnMouseDownInput n) = n <$ do
-    H.modify_ $ _
-      { open = true
-      }
+    H.modify_ $ _ { open = true }
 
   eval (OnMouseDownItem index n) = n <$ do
     H.raise $ Selected index
@@ -219,3 +217,9 @@ component = H.component
     H.modify_ $ _
       { highlightedIndex = index
       }
+
+  eval (Close n) = n <$ do
+    H.modify_ $ _ { open = false }
+
+  eval (Raise pq n) = n <$ do
+    H.raise $ Emit pq
