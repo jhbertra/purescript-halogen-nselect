@@ -1,12 +1,13 @@
 module NSelect
   ( Props
-  , Message
+  , Message(..)
   , Query
   , RenderState
   , HTML
   , Slot
   , raise
   , setToggleProps
+  , setInputProps
   , setContainerProps
   , component
   ) where
@@ -19,16 +20,21 @@ import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.Query.EventSource as ES
+import Web.Event.Event as Event
 import Web.HTML as Web
 import Web.HTML.Window as Window
+import Web.UIEvent.KeyboardEvent as KE
 import Web.UIEvent.MouseEvent as ME
 import Web.UIEvent.MouseEvent.EventTypes as ET
 
 type Props pq m =
   { render :: RenderState -> HTML pq m
+  , itemCount :: Int
   }
 
-type Message pq = pq Unit
+data Message pq
+  = Selected Int
+  | Emit (pq Unit)
 
 data Query pq m a
   = Init a
@@ -36,30 +42,36 @@ data Query pq m a
   | OnWindowMouseDown a
   | OnMouseDownToggle a
   | OnMouseUpToggle a
+  | OnKeyDownInput KE.KeyboardEvent a
+  | OnMouseDownInput a
   | OnMouseDownContainer a
   | OnMouseUpContainer a
   | Raise (pq Unit) a
 
 type State pq m =
   { props :: Props pq m
-  , open :: Boolean
   , clickedInside :: Boolean
+  , open :: Boolean
+  , highlightedIndex :: Int
   }
 
 initialState :: forall pq m. Props pq m -> State pq m
 initialState props =
   { props
-  , open: false
   , clickedInside: false
+  , open: false
+  , highlightedIndex: 0
   }
 
 type RenderState =
   { open :: Boolean
+  , highlightedIndex :: Int
   }
 
 stateToRenderState :: forall pq m. State pq m -> RenderState
-stateToRenderState { open } =
+stateToRenderState { open, highlightedIndex } =
   { open
+  , highlightedIndex
   }
 
 type HTML pq m = H.ComponentHTML (Query pq m) () m
@@ -74,12 +86,6 @@ type ToggleProps r =
   | r
   )
 
-type ContainerProps r =
-  ( onMouseDown :: ME.MouseEvent
-  , onMouseUp :: ME.MouseEvent
-  | r
-  )
-
 setToggleProps
   :: forall pq m r
    . Array (HH.IProp (ToggleProps r) (Query pq m Unit))
@@ -88,6 +94,27 @@ setToggleProps props = props <>
   [ HE.onMouseDown $ HE.input_ OnMouseDownToggle
   , HE.onMouseUp $ HE.input_ OnMouseUpToggle
   ]
+
+type InputProps r =
+  ( onMouseDown :: ME.MouseEvent
+  , onKeyDown :: KE.KeyboardEvent
+  | r
+  )
+
+setInputProps
+  :: forall pq m r
+   . Array (HH.IProp (InputProps r) (Query pq m Unit))
+  -> Array (HH.IProp (InputProps r) (Query pq m Unit))
+setInputProps props = props <>
+  [ HE.onMouseDown $ HE.input_ OnMouseDownInput
+  , HE.onKeyDown $ HE.input OnKeyDownInput
+  ]
+
+type ContainerProps r =
+  ( onMouseDown :: ME.MouseEvent
+  , onMouseUp :: ME.MouseEvent
+  | r
+  )
 
 setContainerProps
   :: forall pq m r
@@ -134,7 +161,7 @@ component = H.component
     H.modify_ $ _ { props = props }
 
   eval (Raise pq n) = n <$ do
-    H.raise pq
+    H.raise $ Emit pq
 
   eval (OnMouseDownToggle n) = n <$ do
     H.modify_ \s -> s
@@ -145,6 +172,28 @@ component = H.component
   eval (OnMouseUpToggle n) = n <$ do
     H.modify_ $ _
       { clickedInside = false
+      }
+
+  eval (OnKeyDownInput kbEvent n) = n <$ do
+    let event = KE.toEvent kbEvent
+    case KE.key kbEvent of
+      "ArrowUp" -> do
+        H.liftEffect $ Event.preventDefault event
+        H.modify_ \s -> s
+          { highlightedIndex = max 0 (s.highlightedIndex - 1) }
+      "ArrowDown" -> do
+        H.liftEffect $ Event.preventDefault event
+        H.modify_ \s -> s
+          { highlightedIndex =
+            min (s.props.itemCount - 1) (s.highlightedIndex + 1)
+          }
+      "Enter" -> H.gets _.highlightedIndex >>= H.raise <<< Selected
+      _ -> pure unit
+
+  eval (OnMouseDownInput n) = n <$ do
+    H.modify_ \s -> s
+      { open = true
+      , clickedInside = true
       }
 
   eval (OnMouseDownContainer n) = n <$ do
