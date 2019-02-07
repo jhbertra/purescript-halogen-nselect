@@ -58,7 +58,6 @@ data Query pq m a
   | OnFocusInput a
   | OnKeyDownInput KE.KeyboardEvent a
   | OnKeyDownInput' (KeyDownHandler pq) KE.KeyboardEvent a
-  | OnMouseDownInput a
   | OnMouseDownItem Int a
   | OnMouseEnterItem Int a
   | OnValueInput String a
@@ -129,10 +128,8 @@ setToggleProps props = props <>
   ]
 
 type InputProps r =
-  ( type :: HP.InputType
-  , value :: String
+  ( value :: String
   , onFocus :: FocusEvent
-  , onMouseDown :: ME.MouseEvent
   , onKeyDown :: KE.KeyboardEvent
   , onInput :: Event.Event
   | r
@@ -145,10 +142,8 @@ sharedInputProps
   :: forall pq m r
    . Array (HH.IProp (InputProps r) (Query pq m Unit))
 sharedInputProps =
-  [ HP.type_ HP.InputText
-  , HP.ref inputRef
+  [ HP.ref inputRef
   , HE.onFocus $ HE.input_ OnFocusInput
-  , HE.onMouseDown $ HE.input_ OnMouseDownInput
   , HE.onValueInput $ HE.input OnValueInput
   ]
 
@@ -253,9 +248,6 @@ component = H.component
   eval (OnKeyDownInput' parentOnKeyDown kbEvent n) = n <$ do
     eval (OnKeyDownInput kbEvent unit)
     H.raise $ Emit $ parentOnKeyDown kbEvent
-
-  eval (OnMouseDownInput n) = n <$ do
-    H.modify_ $ _ { open = true }
 
   eval (OnMouseDownItem index n) = n <$ do
     H.raise $ Selected index
