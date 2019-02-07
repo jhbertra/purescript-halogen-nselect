@@ -38,19 +38,20 @@ import Web.UIEvent.KeyboardEvent as KE
 import Web.UIEvent.MouseEvent as ME
 import Web.UIEvent.MouseEvent.EventTypes as ET
 
-type Props pq m =
-  { render :: RenderState -> HTML pq m
+type Props pq cs m =
+  { render :: RenderState -> HTML pq cs m
   , itemCount :: Int
   }
 
 data Message pq
   = Selected Int
   | ValueChanged String
+  | Focused
   | Emit (pq Unit)
 
-data Query pq m a
+data Query pq cs m a
   = Init a
-  | ReceiveProps (Props pq m) a
+  | ReceiveProps (Props pq cs m) a
   | OnWindowMouseDown a
   | OnMouseDownRoot a
   | OnMouseUpRoot a
@@ -66,14 +67,14 @@ data Query pq m a
   | Select a
   | Raise (pq Unit) a
 
-type State pq m =
-  { props :: Props pq m
+type State pq cs m =
+  { props :: Props pq cs m
   , clickedInside :: Boolean
   , open :: Boolean
   , highlightedIndex :: Int
   }
 
-initialState :: forall pq m. Props pq m -> State pq m
+initialState :: forall pq cs m. Props pq cs m -> State pq cs m
 initialState props =
   { props
   , clickedInside: false
@@ -86,17 +87,17 @@ type RenderState =
   , highlightedIndex :: Int
   }
 
-stateToRenderState :: forall pq m. State pq m -> RenderState
+stateToRenderState :: forall pq cs m. State pq cs m -> RenderState
 stateToRenderState { open, highlightedIndex } =
   { open
   , highlightedIndex
   }
 
-type HTML pq m = H.ComponentHTML (Query pq m) () m
+type HTML pq cs m = H.ComponentHTML (Query pq cs m) cs m
 
-type DSL pq m = H.HalogenM (State pq m) (Query pq m) () (Message pq) m
+type DSL pq cs m = H.HalogenM (State pq cs m) (Query pq cs m) cs (Message pq) m
 
-type Slot f m s = H.Slot (Query f m) (Message f) s
+type Slot f cs m s = H.Slot (Query f cs m) (Message f) s
 
 type RootProps r =
   ( onMouseDown :: ME.MouseEvent
@@ -106,9 +107,9 @@ type RootProps r =
 
 -- Click outside the root will set `open` to false.
 setRootProps
-  :: forall pq m r
-   . Array (HH.IProp (RootProps r) (Query pq m Unit))
-  -> Array (HH.IProp (RootProps r) (Query pq m Unit))
+  :: forall pq cs m r
+   . Array (HH.IProp (RootProps r) (Query pq cs m Unit))
+  -> Array (HH.IProp (RootProps r) (Query pq cs m Unit))
 setRootProps props = props <>
   [ HE.onMouseDown $ HE.input_ OnMouseDownRoot
   , HE.onMouseUp $ HE.input_ OnMouseUpRoot
@@ -120,9 +121,9 @@ type ToggleProps r =
   )
 
 setToggleProps
-  :: forall pq m r
-   . Array (HH.IProp (ToggleProps r) (Query pq m Unit))
-  -> Array (HH.IProp (ToggleProps r) (Query pq m Unit))
+  :: forall pq cs m r
+   . Array (HH.IProp (ToggleProps r) (Query pq cs m Unit))
+  -> Array (HH.IProp (ToggleProps r) (Query pq cs m Unit))
 setToggleProps props = props <>
   [ HE.onMouseDown $ HE.input_ OnMouseDownToggle
   ]
@@ -139,8 +140,8 @@ inputRef :: H.RefLabel
 inputRef = H.RefLabel "__nselect_input"
 
 sharedInputProps
-  :: forall pq m r
-   . Array (HH.IProp (InputProps r) (Query pq m Unit))
+  :: forall pq cs m r
+   . Array (HH.IProp (InputProps r) (Query pq cs m Unit))
 sharedInputProps =
   [ HP.ref inputRef
   , HE.onFocus $ HE.input_ OnFocusInput
@@ -148,9 +149,9 @@ sharedInputProps =
   ]
 
 setInputProps
-  :: forall pq m r
-   . Array (HH.IProp (InputProps r) (Query pq m Unit))
-  -> Array (HH.IProp (InputProps r) (Query pq m Unit))
+  :: forall pq cs m r
+   . Array (HH.IProp (InputProps r) (Query pq cs m Unit))
+  -> Array (HH.IProp (InputProps r) (Query pq cs m Unit))
 setInputProps props = props <> sharedInputProps <>
   [ HE.onKeyDown $ HE.input OnKeyDownInput
   ]
@@ -161,10 +162,10 @@ type KeyDownHandler pq = KE.KeyboardEvent -> pq Unit
 -- | keyboardEvent back to the parent component, so the parent can handle more
 -- | key bindings like Tab.
 setInputProps'
-  :: forall pq m r
+  :: forall pq cs m r
    . { onKeyDown :: KeyDownHandler pq }
-  -> Array (HH.IProp (InputProps r) (Query pq m Unit))
-  -> Array (HH.IProp (InputProps r) (Query pq m Unit))
+  -> Array (HH.IProp (InputProps r) (Query pq cs m Unit))
+  -> Array (HH.IProp (InputProps r) (Query pq cs m Unit))
 setInputProps' parentHandlers props = props <> sharedInputProps <>
   [ HE.onKeyDown $ HE.input $ OnKeyDownInput' parentHandlers.onKeyDown
   ]
@@ -176,23 +177,23 @@ type ItemProps r =
   )
 
 setItemProps
-  :: forall pq m r
+  :: forall pq cs m r
    . Int
-  -> Array (HH.IProp (ItemProps r) (Query pq m Unit))
-  -> Array (HH.IProp (ItemProps r) (Query pq m Unit))
+  -> Array (HH.IProp (ItemProps r) (Query pq cs m Unit))
+  -> Array (HH.IProp (ItemProps r) (Query pq cs m Unit))
 setItemProps index props = props <>
   [ HE.onMouseDown $ HE.input_ $ OnMouseDownItem index
   , HE.onMouseEnter $ HE.input_ $ OnMouseEnterItem index
   ]
 
-render :: forall pq m. State pq m -> HTML pq m
+render :: forall pq cs m. State pq cs m -> HTML pq cs m
 render state =
   state.props.render $ stateToRenderState state
 
 component
-  :: forall pq m
+  :: forall pq cs m
    . MonadAff m
-  => H.Component HH.HTML (Query pq m) (Props pq m) (Message pq) m
+  => H.Component HH.HTML (Query pq cs m) (Props pq cs m) (Message pq) m
 component = H.component
   { initialState
   , render
@@ -202,7 +203,7 @@ component = H.component
   , finalizer: Nothing
   }
   where
-  eval :: Query pq m ~> DSL pq m
+  eval :: Query pq cs m ~> DSL pq cs m
   eval (Init n) = n <$ do
     win <- H.liftEffect Web.window
     H.subscribe $
@@ -228,6 +229,7 @@ component = H.component
 
   eval (OnFocusInput n) = n <$ do
     H.modify_ $ _ { open = true }
+    H.raise Focused
 
   eval (OnKeyDownInput kbEvent n) = n <$ do
     let event = KE.toEvent kbEvent
@@ -278,14 +280,14 @@ component = H.component
 -- | Following are helpers so that you can query from the parent component.
 -- | Query(..) are exposed in case you want to override the whole
 -- | `setInputProps` behavior. Normally these helpers are enough.
-close :: forall pq m a. a -> Query pq m a
+close :: forall pq cs m a. a -> Query pq cs m a
 close = Close
 
-focus :: forall pq m a. a -> Query pq m a
+focus :: forall pq cs m a. a -> Query pq cs m a
 focus = Focus
 
-raise :: forall pq m a. pq Unit -> a -> Query pq m a
+raise :: forall pq cs m a. pq Unit -> a -> Query pq cs m a
 raise f = Raise f
 
-select :: forall pq m a. a -> Query pq m a
+select :: forall pq cs m a. a -> Query pq cs m a
 select = Select

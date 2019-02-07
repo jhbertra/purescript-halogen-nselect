@@ -23,7 +23,7 @@ type State =
   }
 
 type Slots =
-  ( dropdown :: Select.Slot Query Aff Unit
+  ( dropdown :: Select.Slot Query () Aff Unit
   )
 
 _dropdown = SProxy :: SProxy "dropdown"
@@ -49,7 +49,7 @@ initialState =
 style :: forall r i. String -> HH.IProp ("style" :: String | r) i
 style = HH.attr (HH.AttrName "style")
 
-renderSelect :: State -> Select.RenderState -> Select.HTML Query Aff
+renderSelect :: State -> Select.RenderState -> Select.HTML Query () Aff
 renderSelect state st =
   HH.div
   ( Select.setRootProps []
@@ -104,4 +104,5 @@ component = H.component
       void $ H.query _dropdown unit $ H.action Select.close
     Select.ValueChanged value -> do
       H.modify_ $ _ { value = value }
+    Select.Focused -> pure unit
     Select.Emit q -> eval q

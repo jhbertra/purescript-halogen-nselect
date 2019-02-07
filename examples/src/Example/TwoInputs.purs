@@ -32,7 +32,7 @@ derive instance eqDropdownSlot :: Eq DropdownSlot
 derive instance ordDropdownSlot :: Ord DropdownSlot
 
 type Slots =
-  ( dropdown :: Select.Slot Query Aff DropdownSlot
+  ( dropdown :: Select.Slot Query () Aff DropdownSlot
   )
 
 _dropdown = SProxy :: SProxy "dropdown"
@@ -59,7 +59,11 @@ initialState =
 style :: forall r i. String -> HH.IProp ("style" :: String | r) i
 style = HH.attr (HH.AttrName "style")
 
-renderSelect :: State -> DropdownSlot -> Select.RenderState -> Select.HTML Query Aff
+renderSelect
+  :: State
+  -> DropdownSlot
+  -> Select.RenderState
+  -> Select.HTML Query () Aff
 renderSelect state slot st =
   HH.div
   ( Select.setRootProps []
@@ -138,4 +142,5 @@ component = H.component
       case slot of
         DropdownFrom -> H.modify_ $ _ { from = value }
         DropdownTo -> H.modify_ $ _ { to = value }
+    Select.Focused -> pure unit
     Select.Emit q -> eval q
