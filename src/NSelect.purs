@@ -280,14 +280,14 @@ component = H.component
 -- | Following are helpers so that you can query from the parent component.
 -- | Query(..) are exposed in case you want to override the whole
 -- | `setInputProps` behavior. Normally these helpers are enough.
-close :: forall pq cs m a. a -> Query pq cs m a
-close = Close
+close :: forall pq cs m. Query pq cs m Unit
+close = Close unit
 
-focus :: forall pq cs m a. a -> Query pq cs m a
-focus = Focus
+focus :: forall pq cs m. Query pq cs m Unit
+focus = Focus unit
 
 raise :: forall pq cs m a. pq Unit -> a -> Query pq cs m a
 raise f = Raise f
 
-select :: forall pq cs m a. a -> Query pq cs m a
-select = Select
+select :: forall pq cs m . Query pq cs m Unit
+select = Select unit

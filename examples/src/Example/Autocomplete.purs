@@ -101,7 +101,7 @@ component = H.component
       state <- H.get
       for_ (Array.index state.items index) \item ->
         H.modify_ $ _ { value = item }
-      void $ H.query _dropdown unit $ H.action Select.close
+      void $ H.query _dropdown unit Select.close
     Select.ValueChanged value -> do
       H.modify_ $ _ { value = value }
     Select.Focused -> pure unit

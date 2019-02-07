@@ -125,7 +125,7 @@ component = H.component
     case KE.key kbEvent of
       "Tab" -> do
         H.liftEffect $ Event.preventDefault event
-        void $ H.query _dropdown slot $ H.action Select.select
+        void $ H.query _dropdown slot Select.select
       _ -> pure unit
 
   eval (HandleDropdown slot msg n) = n <$ case msg of
@@ -135,9 +135,9 @@ component = H.component
         case slot of
           DropdownFrom -> H.modify_ $ _ { from = item }
           DropdownTo -> H.modify_ $ _ { to = item }
-      void $ H.query _dropdown slot $ H.action Select.close
+      void $ H.query _dropdown slot Select.close
       when (slot == DropdownFrom) $ do
-        void $ H.query _dropdown DropdownTo $ H.action Select.focus
+        void $ H.query _dropdown DropdownTo Select.focus
     Select.ValueChanged value -> do
       case slot of
         DropdownFrom -> H.modify_ $ _ { from = value }
