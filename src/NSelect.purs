@@ -45,8 +45,8 @@ type Props pq cs m =
 
 data Message pq
   = Selected Int
-  | ValueChanged String
-  | Focused
+  | InputValueChanged String
+  | VisibilityChanged Boolean
   | Emit (pq Unit)
 
 data Query pq cs m a
@@ -203,6 +203,11 @@ component = H.component
   , finalizer: Nothing
   }
   where
+  handleVisibilityChange :: Boolean -> DSL pq cs m Unit
+  handleVisibilityChange open = do
+    H.modify_ $ _ { open = open }
+    H.raise $ VisibilityChanged open
+
   eval :: Query pq cs m ~> DSL pq cs m
   eval (Init n) = n <$ do
     win <- H.liftEffect Web.window
@@ -215,8 +220,8 @@ component = H.component
 
   eval (OnWindowMouseDown n) = n <$ do
     state <- H.get
-    when (not state.clickedInside && state.open) $
-      H.modify_ $ _ { open = false }
+    when (not state.clickedInside && state.open) $ do
+      handleVisibilityChange false
 
   eval (OnMouseDownRoot n) = n <$ do
     H.modify_ $ _ { clickedInside = true }
@@ -225,11 +230,11 @@ component = H.component
     H.modify_ $ _ { clickedInside = false }
 
   eval (OnMouseDownToggle n) = n <$ do
-    H.modify_ \s -> s { open = not s.open }
+    state <- H.get
+    handleVisibilityChange $ not state.open
 
   eval (OnFocusInput n) = n <$ do
-    H.modify_ $ _ { open = true }
-    H.raise Focused
+    handleVisibilityChange true
 
   eval (OnKeyDownInput kbEvent n) = n <$ do
     let event = KE.toEvent kbEvent
@@ -260,10 +265,10 @@ component = H.component
       }
 
   eval (OnValueInput value n) = n <$ do
-    H.raise $ ValueChanged value
+    H.raise $ InputValueChanged value
 
   eval (Close n) = n <$ do
-    H.modify_ $ _ { open = false }
+    handleVisibilityChange false
 
   eval (Focus n) = n <$ do
     H.getHTMLElementRef inputRef >>= traverse_ \el -> do

@@ -102,7 +102,7 @@ component = H.component
       for_ (Array.index state.items index) \item ->
         H.modify_ $ _ { value = item }
       void $ H.query _dropdown unit Select.close
-    Select.ValueChanged value -> do
+    Select.InputValueChanged value -> do
       H.modify_ $ _ { value = value }
-    Select.Focused -> pure unit
+    Select.VisibilityChanged _ -> pure unit
     Select.Emit q -> eval q

@@ -138,9 +138,9 @@ component = H.component
       void $ H.query _dropdown slot Select.close
       when (slot == DropdownFrom) $ do
         void $ H.query _dropdown DropdownTo Select.focus
-    Select.ValueChanged value -> do
+    Select.InputValueChanged value -> do
       case slot of
         DropdownFrom -> H.modify_ $ _ { from = value }
         DropdownTo -> H.modify_ $ _ { to = value }
-    Select.Focused -> pure unit
+    Select.VisibilityChanged _ -> pure unit
     Select.Emit q -> eval q
