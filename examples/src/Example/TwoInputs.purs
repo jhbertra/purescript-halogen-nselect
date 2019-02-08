@@ -62,7 +62,7 @@ style = HH.attr (HH.AttrName "style")
 renderSelect
   :: State
   -> DropdownSlot
-  -> Select.RenderState
+  -> Select.State
   -> Select.HTML Query () Aff
 renderSelect state slot st =
   HH.div

@@ -2,7 +2,7 @@ module NSelect
   ( Props
   , Message(..)
   , Query(..)
-  , RenderState
+  , State
   , HTML
   , Slot
   , KeyDownHandler
@@ -39,7 +39,7 @@ import Web.UIEvent.MouseEvent as ME
 import Web.UIEvent.MouseEvent.EventTypes as ET
 
 type Props pq cs m =
-  { render :: RenderState -> HTML pq cs m
+  { render :: State -> HTML pq cs m
   , itemCount :: Int
   }
 
@@ -68,14 +68,14 @@ data Query pq cs m a
   | Select a
   | Raise (pq Unit) a
 
-type State pq cs m =
+type InnerState pq cs m =
   { props :: Props pq cs m
   , clickedInside :: Boolean
   , isOpen :: Boolean
   , highlightedIndex :: Int
   }
 
-initialState :: forall pq cs m. Props pq cs m -> State pq cs m
+initialState :: forall pq cs m. Props pq cs m -> InnerState pq cs m
 initialState props =
   { props
   , clickedInside: false
@@ -83,20 +83,20 @@ initialState props =
   , highlightedIndex: 0
   }
 
-type RenderState =
+type State =
   { isOpen :: Boolean
   , highlightedIndex :: Int
   }
 
-stateToRenderState :: forall pq cs m. State pq cs m -> RenderState
-stateToRenderState { isOpen, highlightedIndex } =
+innerStateToState :: forall pq cs m. InnerState pq cs m -> State
+innerStateToState { isOpen, highlightedIndex } =
   { isOpen
   , highlightedIndex
   }
 
 type HTML pq cs m = H.ComponentHTML (Query pq cs m) cs m
 
-type DSL pq cs m = H.HalogenM (State pq cs m) (Query pq cs m) cs (Message pq) m
+type DSL pq cs m = H.HalogenM (InnerState pq cs m) (Query pq cs m) cs (Message pq) m
 
 type Slot f cs m s = H.Slot (Query f cs m) (Message f) s
 
@@ -187,9 +187,9 @@ setItemProps index props = props <>
   , HE.onMouseEnter $ HE.input_ $ OnMouseEnterItem index
   ]
 
-render :: forall pq cs m. State pq cs m -> HTML pq cs m
+render :: forall pq cs m. InnerState pq cs m -> HTML pq cs m
 render state =
-  state.props.render $ stateToRenderState state
+  state.props.render $ innerStateToState state
 
 component
   :: forall pq cs m

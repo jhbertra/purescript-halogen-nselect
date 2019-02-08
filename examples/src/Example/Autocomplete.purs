@@ -49,7 +49,7 @@ initialState =
 style :: forall r i. String -> HH.IProp ("style" :: String | r) i
 style = HH.attr (HH.AttrName "style")
 
-renderSelect :: State -> Select.RenderState -> Select.HTML Query () Aff
+renderSelect :: State -> Select.State -> Select.HTML Query () Aff
 renderSelect state st =
   HH.div
   ( Select.setRootProps []

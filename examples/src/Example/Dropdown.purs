@@ -35,7 +35,7 @@ initialState =
   { value: ""
   }
 
-renderSelect :: State -> Select.RenderState -> Select.HTML Query () Aff
+renderSelect :: State -> Select.State -> Select.HTML Query () Aff
 renderSelect state st =
   HH.div
   ( Select.setRootProps []
