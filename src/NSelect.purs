@@ -62,6 +62,7 @@ data Query pq cs m a
   | OnMouseDownItem Int a
   | OnMouseEnterItem Int a
   | OnValueInput String a
+  | Open a
   | Close a
   | Focus a
   | Select a
@@ -70,7 +71,7 @@ data Query pq cs m a
 type State pq cs m =
   { props :: Props pq cs m
   , clickedInside :: Boolean
-  , open :: Boolean
+  , isOpen :: Boolean
   , highlightedIndex :: Int
   }
 
@@ -78,18 +79,18 @@ initialState :: forall pq cs m. Props pq cs m -> State pq cs m
 initialState props =
   { props
   , clickedInside: false
-  , open: false
+  , isOpen: false
   , highlightedIndex: 0
   }
 
 type RenderState =
-  { open :: Boolean
+  { isOpen :: Boolean
   , highlightedIndex :: Int
   }
 
 stateToRenderState :: forall pq cs m. State pq cs m -> RenderState
-stateToRenderState { open, highlightedIndex } =
-  { open
+stateToRenderState { isOpen, highlightedIndex } =
+  { isOpen
   , highlightedIndex
   }
 
@@ -105,7 +106,7 @@ type RootProps r =
   | r
   )
 
--- Click outside the root will set `open` to false.
+-- Click outside the root will close the dropdown.
 setRootProps
   :: forall pq cs m r
    . Array (HH.IProp (RootProps r) (Query pq cs m Unit))
@@ -204,9 +205,9 @@ component = H.component
   }
   where
   handleVisibilityChange :: Boolean -> DSL pq cs m Unit
-  handleVisibilityChange open = do
-    H.modify_ $ _ { open = open }
-    H.raise $ VisibilityChanged open
+  handleVisibilityChange isOpen = do
+    H.modify_ $ _ { isOpen = isOpen }
+    H.raise $ VisibilityChanged isOpen
 
   eval :: Query pq cs m ~> DSL pq cs m
   eval (Init n) = n <$ do
@@ -220,7 +221,7 @@ component = H.component
 
   eval (OnWindowMouseDown n) = n <$ do
     state <- H.get
-    when (not state.clickedInside && state.open) $ do
+    when (not state.clickedInside && state.isOpen) $ do
       handleVisibilityChange false
 
   eval (OnMouseDownRoot n) = n <$ do
@@ -231,7 +232,7 @@ component = H.component
 
   eval (OnMouseDownToggle n) = n <$ do
     state <- H.get
-    handleVisibilityChange $ not state.open
+    handleVisibilityChange $ not state.isOpen
 
   eval (OnFocusInput n) = n <$ do
     handleVisibilityChange true
@@ -267,6 +268,9 @@ component = H.component
   eval (OnValueInput value n) = n <$ do
     H.raise $ InputValueChanged value
 
+  eval (Open n) = n <$ do
+    handleVisibilityChange true
+
   eval (Close n) = n <$ do
     handleVisibilityChange false
 
@@ -285,6 +289,9 @@ component = H.component
 -- | Following are helpers so that you can query from the parent component.
 -- | Query(..) are exposed in case you want to override the whole
 -- | `setInputProps` behavior. Normally these helpers are enough.
+open :: forall pq cs m. Query pq cs m Unit
+open = Open unit
+
 close :: forall pq cs m. Query pq cs m Unit
 close = Close unit
 

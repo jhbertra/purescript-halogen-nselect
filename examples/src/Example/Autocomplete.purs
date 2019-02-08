@@ -59,7 +59,7 @@ renderSelect state st =
       [ HP.value state.value
       ]
     )
-  , guard st.open $> HH.div_
+  , guard st.isOpen $> HH.div_
     [ HH.ul
       [ style "list-style: none;"
       ] $ state.items # Array.mapWithIndex \index item ->

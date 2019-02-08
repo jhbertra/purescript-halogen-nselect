@@ -43,7 +43,7 @@ renderSelect state st =
   [ pure $ HH.div
     ( Select.setToggleProps [])
     [ HH.text "toggle" ]
-  , guard st.open $> HH.div_
+  , guard st.isOpen $> HH.div_
     [ HH.input
       [ HP.value state.value
       , HE.onValueInput $ HE.input \v -> Select.raise $ OnInput v unit
