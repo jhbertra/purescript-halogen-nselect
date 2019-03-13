@@ -39,16 +39,16 @@ import Web.UIEvent.KeyboardEvent as KE
 import Web.UIEvent.MouseEvent as ME
 import Web.UIEvent.MouseEvent.EventTypes as ET
 
-type Props pq cs m =
-  { render :: State -> HTML pq cs m
+type Props pa cs m =
+  { render :: State -> HTML pa cs m
   , itemCount :: Int
   }
 
-data Message pq
+data Message pa
   = Selected Int
   | InputValueChanged String
   | VisibilityChanged Boolean
-  | Emit pq
+  | Emit pa
 
 data Query a
   = Open a
@@ -56,29 +56,29 @@ data Query a
   | Focus a
   | Select a
 
-data Action pq cs m
+data Action pa cs m
   = Init
-  | ReceiveProps (Props pq cs m)
+  | ReceiveProps (Props pa cs m)
   | OnWindowMouseDown
   | OnMouseDownRoot
   | OnMouseUpRoot
   | OnMouseDownToggle
   | OnFocusInput
   | OnKeyDownInput KE.KeyboardEvent
-  | OnKeyDownInput' (KeyDownHandler pq) KE.KeyboardEvent
+  | OnKeyDownInput' (KeyDownHandler pa) KE.KeyboardEvent
   | OnClickItem Int
   | OnMouseEnterItem Int
   | OnValueInput String
-  | Raise pq
+  | Raise pa
 
-type InnerState pq cs m =
-  { props :: Props pq cs m
+type InnerState pa cs m =
+  { props :: Props pa cs m
   , clickedInside :: Boolean
   , isOpen :: Boolean
   , highlightedIndex :: Int
   }
 
-initialState :: forall pq cs m. Props pq cs m -> InnerState pq cs m
+initialState :: forall pa cs m. Props pa cs m -> InnerState pa cs m
 initialState props =
   { props
   , clickedInside: false
@@ -91,15 +91,15 @@ type State =
   , highlightedIndex :: Int
   }
 
-innerStateToState :: forall pq cs m. InnerState pq cs m -> State
+innerStateToState :: forall pa cs m. InnerState pa cs m -> State
 innerStateToState { isOpen, highlightedIndex } =
   { isOpen
   , highlightedIndex
   }
 
-type HTML pq cs m = H.ComponentHTML (Action pq cs m) cs m
+type HTML pa cs m = H.ComponentHTML (Action pa cs m) cs m
 
-type DSL pq cs m = H.HalogenM (InnerState pq cs m) (Action pq cs m) cs (Message pq) m
+type DSL pa cs m = H.HalogenM (InnerState pa cs m) (Action pa cs m) cs (Message pa) m
 
 type Slot f s = H.Slot Query (Message f) s
 
@@ -111,9 +111,9 @@ type RootProps r =
 
 -- Click outside the root will close the dropdown.
 setRootProps
-  :: forall pq cs m r
-   . Array (HH.IProp (RootProps r) (Action pq cs m))
-  -> Array (HH.IProp (RootProps r) (Action pq cs m))
+  :: forall pa cs m r
+   . Array (HH.IProp (RootProps r) (Action pa cs m))
+  -> Array (HH.IProp (RootProps r) (Action pa cs m))
 setRootProps props = props <>
   [ HE.onMouseDown $ Just <<< const OnMouseDownRoot
   , HE.onMouseUp $ Just <<< const OnMouseUpRoot
@@ -125,9 +125,9 @@ type ToggleProps r =
   )
 
 setToggleProps
-  :: forall pq cs m r
-   . Array (HH.IProp (ToggleProps r) (Action pq cs m))
-  -> Array (HH.IProp (ToggleProps r) (Action pq cs m))
+  :: forall pa cs m r
+   . Array (HH.IProp (ToggleProps r) (Action pa cs m))
+  -> Array (HH.IProp (ToggleProps r) (Action pa cs m))
 setToggleProps props = props <>
   [ HE.onMouseDown $ Just <<< const OnMouseDownToggle
   ]
@@ -144,8 +144,8 @@ inputRef :: H.RefLabel
 inputRef = H.RefLabel "__nselect_input"
 
 sharedInputProps
-  :: forall pq cs m r
-   . Array (HH.IProp (InputProps r) (Action pq cs m))
+  :: forall pa cs m r
+   . Array (HH.IProp (InputProps r) (Action pa cs m))
 sharedInputProps =
   [ HP.ref inputRef
   , HE.onFocus $ Just <<< const OnFocusInput
@@ -153,23 +153,23 @@ sharedInputProps =
   ]
 
 setInputProps
-  :: forall pq cs m r
-   . Array (HH.IProp (InputProps r) (Action pq cs m))
-  -> Array (HH.IProp (InputProps r) (Action pq cs m))
+  :: forall pa cs m r
+   . Array (HH.IProp (InputProps r) (Action pa cs m))
+  -> Array (HH.IProp (InputProps r) (Action pa cs m))
 setInputProps props = props <> sharedInputProps <>
   [ HE.onKeyDown $ Just <<< OnKeyDownInput
   ]
 
-type KeyDownHandler pq = KE.KeyboardEvent -> pq
+type KeyDownHandler pa = KE.KeyboardEvent -> pa
 
 -- | setInputProps' does everything setInputProps does, but also pass the
 -- | keyboardEvent back to the parent component, so the parent can handle more
 -- | key bindings like Tab.
 setInputProps'
-  :: forall pq cs m r
-   . { onKeyDown :: KeyDownHandler pq }
-  -> Array (HH.IProp (InputProps r) (Action pq cs m))
-  -> Array (HH.IProp (InputProps r) (Action pq cs m))
+  :: forall pa cs m r
+   . { onKeyDown :: KeyDownHandler pa }
+  -> Array (HH.IProp (InputProps r) (Action pa cs m))
+  -> Array (HH.IProp (InputProps r) (Action pa cs m))
 setInputProps' parentHandlers props = props <> sharedInputProps <>
   [ HE.onKeyDown $ Just <<< OnKeyDownInput' parentHandlers.onKeyDown
   ]
@@ -181,23 +181,23 @@ type ItemProps r =
   )
 
 setItemProps
-  :: forall pq cs m r
+  :: forall pa cs m r
    . Int
-  -> Array (HH.IProp (ItemProps r) (Action pq cs m))
-  -> Array (HH.IProp (ItemProps r) (Action pq cs m))
+  -> Array (HH.IProp (ItemProps r) (Action pa cs m))
+  -> Array (HH.IProp (ItemProps r) (Action pa cs m))
 setItemProps index props = props <>
   [ HE.onClick $ Just <<< const (OnClickItem index)
   , HE.onMouseEnter $ Just <<< const (OnMouseEnterItem index)
   ]
 
-render :: forall pq cs m. InnerState pq cs m -> HTML pq cs m
+render :: forall pa cs m. InnerState pa cs m -> HTML pa cs m
 render state =
   state.props.render $ innerStateToState state
 
 component
-  :: forall pq cs m
+  :: forall pa cs m
    . MonadAff m
-  => H.Component HH.HTML Query (Props pq cs m) (Message pq) m
+  => H.Component HH.HTML Query (Props pa cs m) (Message pa) m
 component = H.mkComponent
   { initialState
   , render
@@ -209,16 +209,16 @@ component = H.mkComponent
       }
   }
 
-handleVisibilityChange :: forall pq cs m. Boolean -> DSL pq cs m Unit
+handleVisibilityChange :: forall pa cs m. Boolean -> DSL pa cs m Unit
 handleVisibilityChange isOpen = do
   H.modify_ $ _ { isOpen = isOpen }
   H.raise $ VisibilityChanged isOpen
 
 handleAction
-  :: forall pq cs m
+  :: forall pa cs m
    . MonadAff m
-  => Action pq cs m
-  -> DSL pq cs m Unit
+  => Action pa cs m
+  -> DSL pa cs m Unit
 handleAction = case _ of
   Init -> do
     win <- H.liftEffect Web.window
@@ -278,15 +278,15 @@ handleAction = case _ of
   OnValueInput value -> do
     H.raise $ InputValueChanged value
 
-  Raise pq -> do
-    H.raise $ Emit pq
+  Raise pa -> do
+    H.raise $ Emit pa
 
 
 handleQuery
-  :: forall pq cs m a
+  :: forall pa cs m a
    . MonadAff m
   => Query a
-  -> DSL pq cs m (Maybe a)
+  -> DSL pa cs m (Maybe a)
 handleQuery = case _ of
   Open n -> do
     handleVisibilityChange true
@@ -318,7 +318,7 @@ close = Close unit
 focus :: Query Unit
 focus = Focus unit
 
-raise :: forall pq cs m. pq -> Action pq cs m
+raise :: forall pa cs m. pa -> Action pa cs m
 raise f = Raise f
 
 select :: Query Unit
