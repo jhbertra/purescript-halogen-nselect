@@ -16,7 +16,7 @@
     "output"
   ],
   "dependencies": {
-    "purescript-halogen": "https://github.com/slamdata/purescript-halogen.git#e43096ccde699f68f1803acd23bab493a7190e2c"
+    "purescript-halogen": "^5.0.0-rc.3"
   },
   "devDependencies": {
     "purescript-jest": "^0.2.0",
