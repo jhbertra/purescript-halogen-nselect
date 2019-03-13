@@ -66,7 +66,7 @@ data Action pq cs m
   | OnFocusInput
   | OnKeyDownInput KE.KeyboardEvent
   | OnKeyDownInput' (KeyDownHandler pq) KE.KeyboardEvent
-  | OnMouseDownItem Int
+  | OnClickItem Int
   | OnMouseEnterItem Int
   | OnValueInput String
   | Raise pq
@@ -175,7 +175,7 @@ setInputProps' parentHandlers props = props <> sharedInputProps <>
   ]
 
 type ItemProps r =
-  ( onMouseDown :: ME.MouseEvent
+  ( onClick :: ME.MouseEvent
   , onMouseEnter :: ME.MouseEvent
   | r
   )
@@ -186,7 +186,7 @@ setItemProps
   -> Array (HH.IProp (ItemProps r) (Action pq cs m))
   -> Array (HH.IProp (ItemProps r) (Action pq cs m))
 setItemProps index props = props <>
-  [ HE.onMouseDown $ Just <<< const (OnMouseDownItem index)
+  [ HE.onClick $ Just <<< const (OnClickItem index)
   , HE.onMouseEnter $ Just <<< const (OnMouseEnterItem index)
   ]
 
@@ -213,7 +213,6 @@ handleVisibilityChange :: forall pq cs m. Boolean -> DSL pq cs m Unit
 handleVisibilityChange isOpen = do
   H.modify_ $ _ { isOpen = isOpen }
   H.raise $ VisibilityChanged isOpen
-
 
 handleAction
   :: forall pq cs m
@@ -268,7 +267,7 @@ handleAction = case _ of
     handleAction (OnKeyDownInput kbEvent)
     H.raise $ Emit $ parentOnKeyDown kbEvent
 
-  OnMouseDownItem index -> do
+  OnClickItem index -> do
     H.raise $ Selected index
 
   OnMouseEnterItem index -> do
