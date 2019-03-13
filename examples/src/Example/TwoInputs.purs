@@ -4,21 +4,23 @@ import Prelude
 
 import Control.MonadPlus (guard)
 import Data.Array as Array
+import Data.Const (Const)
 import Data.Foldable (for_)
 import Data.Maybe (Maybe(..))
 import Data.Symbol (SProxy(..))
 import Effect.Aff (Aff)
 import Halogen as H
 import Halogen.HTML as HH
-import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import NSelect as Select
 import Web.Event.Event as Event
 import Web.UIEvent.KeyboardEvent as KE
 
-data Query a
-  = OnKeyDownInput DropdownSlot KE.KeyboardEvent a
-  | HandleDropdown DropdownSlot (Select.Message Query) a
+type Query = Const Void
+
+data Action
+  = OnKeyDownInput DropdownSlot KE.KeyboardEvent
+  | HandleDropdown DropdownSlot (Select.Message Action)
 
 type State =
   { from :: String
@@ -32,14 +34,12 @@ derive instance eqDropdownSlot :: Eq DropdownSlot
 derive instance ordDropdownSlot :: Ord DropdownSlot
 
 type Slots =
-  ( dropdown :: Select.Slot Query () Aff DropdownSlot
+  ( dropdown :: Select.Slot Action DropdownSlot
   )
 
 _dropdown = SProxy :: SProxy "dropdown"
 
-type HTML = H.ComponentHTML Query Slots Aff
-
-type DSL = H.HalogenM State Query Slots Void Aff
+type HTML = H.ComponentHTML Action Slots Aff
 
 items :: Array String
 items =
@@ -63,14 +63,14 @@ renderSelect
   :: State
   -> DropdownSlot
   -> Select.State
-  -> Select.HTML Query () Aff
+  -> Select.HTML Action () Aff
 renderSelect state slot st =
   HH.div
   ( Select.setRootProps []
   ) $ join
   [ pure $ HH.input
     ( Select.setInputProps'
-      { onKeyDown: \e -> OnKeyDownInput slot e unit
+      { onKeyDown: \e -> OnKeyDownInput slot e
       }
       [ HP.value value
       ]
@@ -102,45 +102,42 @@ render state =
   [ HH.slot _dropdown DropdownFrom Select.component
     { render: renderSelect state DropdownFrom
     , itemCount: Array.length state.items
-    } $ HE.input $ HandleDropdown DropdownFrom
+    } $ Just <<< HandleDropdown DropdownFrom
   , HH.slot _dropdown DropdownTo Select.component
     { render: renderSelect state DropdownTo
     , itemCount: Array.length state.items
-    } $ HE.input $ HandleDropdown DropdownTo
+    } $ Just <<< HandleDropdown DropdownTo
   ]
 
 component :: H.Component HH.HTML Query Unit Void Aff
-component = H.component
+component = H.mkComponent
   { initialState: const initialState
   , render
-  , eval
-  , receiver: const Nothing
-  , initializer: Nothing
-  , finalizer: Nothing
+  , eval: H.mkEval $ H.defaultEval
+      { handleAction = handleAction }
   }
-  where
-  eval :: Query ~> DSL
-  eval (OnKeyDownInput slot kbEvent n) = n <$ do
-    let event = KE.toEvent kbEvent
-    case KE.key kbEvent of
-      "Tab" -> do
-        H.liftEffect $ Event.preventDefault event
-        void $ H.query _dropdown slot Select.select
-      _ -> pure unit
 
-  eval (HandleDropdown slot msg n) = n <$ case msg of
-    Select.Selected index -> do
-      state <- H.get
-      for_ (Array.index state.items index) \item ->
-        case slot of
-          DropdownFrom -> H.modify_ $ _ { from = item }
-          DropdownTo -> H.modify_ $ _ { to = item }
-      void $ H.query _dropdown slot Select.close
-      when (slot == DropdownFrom) $ do
-        void $ H.query _dropdown DropdownTo Select.focus
-    Select.InputValueChanged value -> do
+handleAction :: Action -> H.HalogenM State Action Slots Void Aff Unit
+handleAction (OnKeyDownInput slot kbEvent) = do
+  let event = KE.toEvent kbEvent
+  case KE.key kbEvent of
+    "Tab" -> do
+      H.liftEffect $ Event.preventDefault event
+      void $ H.query _dropdown slot Select.select
+    _ -> pure unit
+handleAction (HandleDropdown slot msg) = case msg of
+  Select.Selected index -> do
+    state <- H.get
+    for_ (Array.index state.items index) \item ->
       case slot of
-        DropdownFrom -> H.modify_ $ _ { from = value }
-        DropdownTo -> H.modify_ $ _ { to = value }
-    Select.VisibilityChanged _ -> pure unit
-    Select.Emit q -> eval q
+        DropdownFrom -> H.modify_ $ _ { from = item }
+        DropdownTo -> H.modify_ $ _ { to = item }
+    void $ H.query _dropdown slot Select.close
+    when (slot == DropdownFrom) $ do
+      void $ H.query _dropdown DropdownTo Select.focus
+  Select.InputValueChanged value -> do
+    case slot of
+      DropdownFrom -> H.modify_ $ _ { from = value }
+      DropdownTo -> H.modify_ $ _ { to = value }
+  Select.VisibilityChanged _ -> pure unit
+  Select.Emit q -> handleAction q

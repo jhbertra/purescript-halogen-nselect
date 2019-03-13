@@ -4,18 +4,20 @@ import Prelude
 
 import Control.MonadPlus (guard)
 import Data.Array as Array
+import Data.Const (Const)
 import Data.Foldable (for_)
 import Data.Maybe (Maybe(..))
 import Data.Symbol (SProxy(..))
 import Effect.Aff (Aff)
 import Halogen as H
 import Halogen.HTML as HH
-import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import NSelect as Select
 
-data Query a
-  = HandleDropdown (Select.Message Query) a
+type Query = Const Void
+
+data Action
+  = HandleDropdown (Select.Message Action)
 
 type State =
   { value :: String
@@ -23,14 +25,12 @@ type State =
   }
 
 type Slots =
-  ( dropdown :: Select.Slot Query () Aff Unit
+  ( dropdown :: Select.Slot Action Unit
   )
 
 _dropdown = SProxy :: SProxy "dropdown"
 
-type HTML = H.ComponentHTML Query Slots Aff
-
-type DSL = H.HalogenM State Query Slots Void Aff
+type HTML = H.ComponentHTML Action Slots Aff
 
 items :: Array String
 items =
@@ -49,7 +49,7 @@ initialState =
 style :: forall r i. String -> HH.IProp ("style" :: String | r) i
 style = HH.attr (HH.AttrName "style")
 
-renderSelect :: State -> Select.State -> Select.HTML Query () Aff
+renderSelect :: State -> Select.State -> Select.HTML Action () Aff
 renderSelect state st =
   HH.div
   ( Select.setRootProps []
@@ -82,27 +82,25 @@ render state =
   [ HH.slot _dropdown unit Select.component
     { render: renderSelect state
     , itemCount: Array.length state.items
-    } $ HE.input HandleDropdown
+    } $ Just <<< HandleDropdown
   ]
 
 component :: H.Component HH.HTML Query Unit Void Aff
-component = H.component
+component = H.mkComponent
   { initialState: const initialState
   , render
-  , eval
-  , receiver: const Nothing
-  , initializer: Nothing
-  , finalizer: Nothing
+  , eval: H.mkEval $ H.defaultEval
+      { handleAction = handleAction }
   }
-  where
-  eval :: Query ~> DSL
-  eval (HandleDropdown msg n) = n <$ case msg of
-    Select.Selected index -> do
-      state <- H.get
-      for_ (Array.index state.items index) \item ->
-        H.modify_ $ _ { value = item }
-      void $ H.query _dropdown unit Select.close
-    Select.InputValueChanged value -> do
-      H.modify_ $ _ { value = value }
-    Select.VisibilityChanged _ -> pure unit
-    Select.Emit q -> eval q
+
+handleAction :: Action -> H.HalogenM State Action Slots Void Aff Unit
+handleAction (HandleDropdown msg) = case msg of
+  Select.Selected index -> do
+    state <- H.get
+    for_ (Array.index state.items index) \item ->
+      H.modify_ $ _ { value = item }
+    void $ H.query _dropdown unit Select.close
+  Select.InputValueChanged value -> do
+    H.modify_ $ _ { value = value }
+  Select.VisibilityChanged _ -> pure unit
+  Select.Emit q -> handleAction q
