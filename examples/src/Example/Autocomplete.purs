@@ -12,25 +12,20 @@ import Effect.Aff (Aff)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
-import NSelect as Select
+import NSelect2 as Select
 
 type Query = Const Void
 
-data Action
-  = HandleDropdown (Select.Message Action)
+type Action
+  = Select.Action Void
 
-type State =
-  { value :: String
-  , items :: Array String
-  }
-
-type Slots =
-  ( dropdown :: Select.Slot Action Unit
+type ExtraStateRow =
+  ( value :: String
   )
 
-_dropdown = SProxy :: SProxy "dropdown"
+type State = Select.State String ExtraStateRow
 
-type HTML = H.ComponentHTML Action Slots Aff
+type HTML = H.ComponentHTML Action () Aff
 
 items :: Array String
 items =
@@ -43,14 +38,15 @@ items =
 initialState :: State
 initialState =
   { value: ""
+  , select: Select.initialState
   , items
   }
 
 style :: forall r i. String -> HH.IProp ("style" :: String | r) i
 style = HH.attr (HH.AttrName "style")
 
-renderSelect :: State -> Select.State -> Select.HTML Action () Aff
-renderSelect state st =
+render :: State -> HTML
+render state =
   HH.div
   ( Select.setRootProps []
   ) $ join
@@ -59,7 +55,7 @@ renderSelect state st =
       [ HP.value state.value
       ]
     )
-  , guard st.isOpen $> HH.div_
+  , guard state.select.isOpen $> HH.div_
     [ HH.ul
       [ style "list-style: none;"
       ] $ state.items # Array.mapWithIndex \index item ->
@@ -72,35 +68,35 @@ renderSelect state st =
   ]
   where
   getStyle index =
-    if index == st.highlightedIndex
+    if index == state.select.highlightedIndex
     then "background: cyan;"
     else ""
-
-render :: State -> HTML
-render state =
-  HH.div_
-  [ HH.slot _dropdown unit Select.component
-    { render: renderSelect state
-    , itemCount: Array.length state.items
-    } $ Just <<< HandleDropdown
-  ]
 
 component :: H.Component HH.HTML Query Unit Void Aff
 component = H.mkComponent
   { initialState: const initialState
   , render
-  , eval: H.mkEval $ H.defaultEval
-      { handleAction = handleAction }
+  , eval: H.mkEval $ Select.defaultEval
+      { handleAction = Select.handleAction handleAction handleMessage
+      }
   }
 
-handleAction :: Action -> H.HalogenM State Action Slots Void Aff Unit
-handleAction (HandleDropdown msg) = case msg of
+type DSL = H.HalogenM State Action () Void Aff
+
+handleAction :: Void -> H.HalogenM State Action () Void Aff Unit
+handleAction = case _ of
+  _ -> pure unit
+-- handleAction (HandleDropdown msg) = case msg of
+  -- Select.InputValueChanged value -> do
+  --   H.modify_ $ _ { value = value }
+  -- Select.VisibilityChanged _ -> pure unit
+  -- Select.Emit q -> handleAction q
+
+handleMessage :: Select.Message -> DSL Unit
+handleMessage = case _ of
   Select.Selected index -> do
     state <- H.get
     for_ (Array.index state.items index) \item ->
       H.modify_ $ _ { value = item }
-    void $ H.query _dropdown unit Select.close
-  Select.InputValueChanged value -> do
-    H.modify_ $ _ { value = value }
-  Select.VisibilityChanged _ -> pure unit
-  Select.Emit q -> handleAction q
+    -- void $ H.query _dropdown unit Select.close
+  _ -> pure unit

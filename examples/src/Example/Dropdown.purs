@@ -23,13 +23,15 @@ type ExtraStateRow =
   ( value :: String
   )
 
-type State = Select.State ExtraStateRow
+type State = Select.State String ExtraStateRow
 
 type HTML = H.ComponentHTML Action () Aff
 
-initialState :: Record ExtraStateRow
+initialState :: State
 initialState =
   { value: ""
+  , items: []
+  , select: Select.initialState
   }
 
 render :: State -> HTML
@@ -52,10 +54,12 @@ render state =
   ]
 
 component :: H.Component HH.HTML Query Unit Void Aff
-component = Select.mkComponent
-  { initialState: const $ Select.initialState initialState
+component = H.mkComponent
+  { initialState: const initialState
   , render
-  , handleAction
+  , eval: H.mkEval $ Select.defaultEval
+      { handleAction = Select.handleAction handleAction (const $ pure unit)
+      }
   }
 
 handleAction :: ExtraAction -> H.HalogenM State Action () Void Aff Unit

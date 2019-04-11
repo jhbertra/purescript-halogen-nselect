@@ -2,82 +2,82 @@ module NSelect2 where
 
 import Prelude
 
+import Data.Array as Array
 import Data.Maybe (Maybe(..))
 import Data.Symbol (SProxy(..))
 import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
+import Halogen.HTML.Properties as HP
 import Halogen.Query.EventSource as ES
-import Prim.Row (class Lacks, class Union)
+import Prim.Row (class Cons, class Lacks, class Union)
 import Record as Record
 import Type.Row (type (+))
+import Web.Event.Event as Event
 import Web.HTML as Web
 import Web.HTML.Window as Window
+import Web.UIEvent.FocusEvent (FocusEvent)
+import Web.UIEvent.KeyboardEvent as KE
 import Web.UIEvent.MouseEvent as ME
 import Web.UIEvent.MouseEvent.EventTypes as ET
 
-type State r =
-  { select ::
-      { isOpen :: Boolean
-      , clickedInside :: Boolean
-      , highlightedIndex :: Int
-      }
+type State i r =
+  { select :: SelectStateRow i
+  , items :: Array i
   | r
   }
 
-initialState
-  :: forall s
-   . Lacks "select" s
-  => Record s
-  -> State s
-initialState state =
-  Record.insert (SProxy :: SProxy "select")
-    { isOpen: false
-    , clickedInside: false
-    , highlightedIndex: 0
-    } state
+type SelectStateRow i =
+  { isOpen :: Boolean
+  , clickedInside :: Boolean
+  , highlightedIndex :: Int
+  }
+
+initialState :: forall i. SelectStateRow i
+initialState =
+  { isOpen: false
+  , clickedInside: false
+  , highlightedIndex: 0
+  }
+
+data Message
+  = Selected Int
 
 data Action a
   = Init
-  | ExtraAction a
   | OnWindowMouseDown
   | OnMouseDownRoot
   | OnMouseUpRoot
   | OnMouseDownToggle
-  -- | OnFocusInput
-  -- | OnKeyDownInput KE.KeyboardEvent
+  | ExtraAction a
+  | OnFocusInput
+  | OnKeyDownInput KE.KeyboardEvent
   -- | OnKeyDownInput' (KeyDownHandler pa) KE.KeyboardEvent
-  -- | OnClickItem Int
-  -- | OnMouseEnterItem Int
-  -- | OnValueInput String
+  | OnClickItem Int
+  | OnMouseEnterItem Int
+  | OnValueInput String
   -- | Raise pa
 
-mkComponent config@{ initialState, render } = H.mkComponent
-  { initialState
-  , render
-  , eval: H.mkEval $ H.defaultEval
-      { handleAction = handleAction config.handleAction
-      , initialize = Just Init
-      }
-      -- , handleQuery = handleQuery
-      -- , receive = Just <<< ReceiveProps
+defaultEval = H.defaultEval
+  { initialize = Just Init
   }
 
-type DSL s a cs m = H.HalogenM (State s) (Action a) cs Void m
+type DSL i s a cs m = H.HalogenM (State i s) (Action a) cs Void m
 
-handleVisibilityChange :: forall s a cs m. Boolean -> DSL s a cs m Unit
+handleVisibilityChange :: forall i s a cs m. Boolean -> DSL i s a cs m Unit
 handleVisibilityChange isOpen = do
   H.modify_ $ _ { select { isOpen = isOpen } }
   -- H.raise $ VisibilityChanged isOpen
 
 handleAction
-  :: forall s a cs m
+  :: forall i s a cs m
    . MonadAff m
-  => (a -> DSL s a cs m Unit)
+  => (a -> DSL i s a cs m Unit)
+  -> (Message -> DSL i s a cs m Unit)
   -> Action a
-  -> DSL s a cs m Unit
-handleAction handleExtra = case _ of
+  -> DSL i s a cs m Unit
+handleAction handleExtra handleMessage = case _ of
   Init -> do
     win <- H.liftEffect Web.window
     void $ H.subscribe $
@@ -99,9 +99,44 @@ handleAction handleExtra = case _ of
     { select } <- H.get
     handleVisibilityChange $ not select.isOpen
 
+  OnFocusInput -> do
+    handleVisibilityChange true
+
+  OnKeyDownInput kbEvent -> do
+    let event = KE.toEvent kbEvent
+    case KE.key kbEvent of
+      "ArrowUp" -> do
+        H.liftEffect $ Event.preventDefault event
+        H.modify_ \s -> s
+          { select
+              { highlightedIndex = max 0 (s.select.highlightedIndex - 1) }
+          }
+      "ArrowDown" -> do
+        H.liftEffect $ Event.preventDefault event
+        H.modify_ \s -> s
+          { select
+              { highlightedIndex =
+                   min (Array.length s.items - 1) (s.select.highlightedIndex + 1)
+              }
+          }
+      "Enter" -> H.gets _.select.highlightedIndex >>= handleMessage <<< Selected
+      _ -> pure unit
+
+  OnClickItem index -> do
+    handleMessage $ Selected index
+
+  OnMouseEnterItem index -> do
+    H.modify_ $ _
+      { select
+          { highlightedIndex = index }
+      }
+
+  OnValueInput value -> do
+    pure unit
+    -- H.raise $ InputValueChanged value
+
   ExtraAction action -> do
     handleExtra action
-  _ -> pure unit
 
 
 type RootProps r =
@@ -131,4 +166,48 @@ setToggleProps
   -> Array (HH.IProp (ToggleProps r) (Action a))
 setToggleProps props = props <>
   [ HE.onMouseDown $ Just <<< const OnMouseDownToggle
+  ]
+
+type InputProps r =
+  ( value :: String
+  , onFocus :: FocusEvent
+  , onKeyDown :: KE.KeyboardEvent
+  , onInput :: Event.Event
+  | r
+  )
+
+inputRef :: H.RefLabel
+inputRef = H.RefLabel "__nselect_input"
+
+sharedInputProps
+  :: forall a r
+   . Array (HH.IProp (InputProps r) (Action a))
+sharedInputProps =
+  [ HP.ref inputRef
+  , HE.onFocus $ Just <<< const OnFocusInput
+  , HE.onValueInput $ Just <<< OnValueInput
+  ]
+
+setInputProps
+  :: forall a r
+   . Array (HH.IProp (InputProps r) (Action a))
+  -> Array (HH.IProp (InputProps r) (Action a))
+setInputProps props = props <> sharedInputProps <>
+  [ HE.onKeyDown $ Just <<< OnKeyDownInput
+  ]
+
+type ItemProps r =
+  ( onClick :: ME.MouseEvent
+  , onMouseEnter :: ME.MouseEvent
+  | r
+  )
+
+setItemProps
+  :: forall a r
+   . Int
+  -> Array (HH.IProp (ItemProps r) (Action a))
+  -> Array (HH.IProp (ItemProps r) (Action a))
+setItemProps index props = props <>
+  [ HE.onClick $ Just <<< const (OnClickItem index)
+  , HE.onMouseEnter $ Just <<< const (OnMouseEnterItem index)
   ]
