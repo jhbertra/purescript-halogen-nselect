@@ -35,10 +35,13 @@ type HTML = H.ComponentHTML Action Slots Aff
 
 items :: Array String
 items =
-  [ "surprise"
-  , "items"
-  , "are"
-  , "fixed"
+  [ "purescript-css-validate"
+  , "purescript-halogen-color-picker"
+  , "purescript-halogen-nselect"
+  , "purescript-halogen-transition"
+  , "purescript-jest"
+  , "purescript-svgo"
+  , "svgen"
   ]
 
 initialState :: State
@@ -50,7 +53,8 @@ initialState =
 renderSelect :: State -> Select.State -> Select.HTML Action () Aff
 renderSelect state st =
   HH.div
-  ( Select.setRootProps []
+  ( Select.setRootProps
+    [ style "width: 20rem;" ]
   ) $ join
   [ pure $ HH.input
     ( Select.setInputProps
@@ -58,8 +62,8 @@ renderSelect state st =
       ]
     )
   , guard st.isOpen $> HH.div
-    [ class_ "shadow-md"
-    , style "width: 20rem;"
+    [ class_ "shadow-md overflow-y-auto"
+    , style "max-height: 10rem;"
     ]
     [ HH.ul_ $
         state.items # Array.mapWithIndex \index item ->
