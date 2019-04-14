@@ -109,7 +109,7 @@ handleAction :: Action -> H.HalogenM State Action Slots Void Aff Unit
 handleAction (HandleDropdown msg) = case msg of
   Select.Selected index -> do
     state <- H.get
-    for_ (Array.index state.items index) \item ->
+    for_ (Array.index state.filteredItems index) \item ->
       H.modify_ $ _ { value = item }
     void $ H.query _dropdown unit Select.close
   Select.InputValueChanged value -> do
