@@ -13,3 +13,7 @@ button {
 input {
   @apply border;
 }
+
+.Dropdown {
+  @apply shadow-md absolute bg-white;
+}

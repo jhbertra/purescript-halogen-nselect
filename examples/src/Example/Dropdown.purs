@@ -39,14 +39,13 @@ initialState =
 renderSelect :: State -> Select.State -> Select.HTML Action () Aff
 renderSelect state st =
   HH.div
-  ( Select.setRootProps
-    [ style "width: 20rem;" ]
+  ( Select.setRootProps [ class_ "inline-block"]
   ) $ join
   [ pure $ HH.button
     ( Select.setToggleProps [])
     [ HH.text "toggle" ]
   , guard st.isOpen $> HH.div
-    [ class_ "shadow-md p-4"
+    [ class_ "Dropdown p-4"
     ]
     [ HH.input
       [ HP.value state.value

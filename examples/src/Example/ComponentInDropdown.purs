@@ -44,14 +44,14 @@ renderSelect :: State -> Select.State -> Select.HTML Action SelectSlots Aff
 renderSelect state st =
   HH.div
   ( Select.setRootProps
-    [ style "width: 20rem;" ]
+    [ class_ "inline-block" ]
   ) $ join
   [ pure $ HH.button
     ( Select.setToggleProps [])
     [ HH.text "toggle" ]
   , guard st.isOpen $>
       HH.div
-      [ class_ "shadow-md p-4"
+      [ class_ "Dropdown p-4"
       ]
       [ HH.slot _child unit Child.component unit
           (Just <<< Select.raise <<< HandleChild)

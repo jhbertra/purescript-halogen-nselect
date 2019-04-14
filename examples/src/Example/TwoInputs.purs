@@ -74,7 +74,7 @@ renderSelect state slot st =
       ]
     )
   , guard st.isOpen $> HH.div
-    [ class_ "shadow-md absolute"
+    [ class_ "Dropdown"
     , style "width: 20rem;"
     ]
     [ HH.ul_ $

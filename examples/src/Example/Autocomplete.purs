@@ -53,8 +53,7 @@ initialState =
 renderSelect :: State -> Select.State -> Select.HTML Action () Aff
 renderSelect state st =
   HH.div
-  ( Select.setRootProps
-    [ style "width: 20rem;" ]
+  ( Select.setRootProps []
   ) $ join
   [ pure $ HH.input
     ( Select.setInputProps
@@ -62,7 +61,7 @@ renderSelect state st =
       ]
     )
   , guard st.isOpen $> HH.div
-    [ class_ "shadow-md overflow-y-auto"
+    [ class_ "Dropdown overflow-y-auto"
     , style "max-height: 10rem;"
     ]
     [ HH.ul_ $
