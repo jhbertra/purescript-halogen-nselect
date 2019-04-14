@@ -1,4 +1,4 @@
 import Main from "Main";
-import "./Storybook.css";
+import "./index.css";
 
 Main.main();
