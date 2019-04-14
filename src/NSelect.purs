@@ -11,6 +11,7 @@ module NSelect
   , setToggleProps
   , setInputProps
   , setInputProps'
+  , setMenuProps
   , setItemProps
   , component
   , close
@@ -25,11 +26,15 @@ import Data.Foldable (traverse_)
 import Data.Maybe (Maybe(..))
 import Effect.Aff as Aff
 import Effect.Aff.Class (class MonadAff)
+import Effect.Class (class MonadEffect)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Query.EventSource as ES
+import Unsafe.Coerce (unsafeCoerce)
+import Web.DOM.Element as Element
+import Web.DOM.ParentNode (QuerySelector(..), querySelector)
 import Web.Event.Event as Event
 import Web.HTML as Web
 import Web.HTML.HTMLElement as HTMLElement
@@ -174,6 +179,19 @@ setInputProps' parentHandlers props = props <> sharedInputProps <>
   [ HE.onKeyDown $ Just <<< OnKeyDownInput' parentHandlers.onKeyDown
   ]
 
+menuRef :: H.RefLabel
+menuRef = H.RefLabel "__nselect_menu"
+
+-- | Use `setMenuProps` so that after ArrowUp/ArrowDown, highlighted item will
+-- | still be visible.
+setMenuProps
+  :: forall pa cs m r
+   . Array (HH.IProp r (Action pa cs m))
+  -> Array (HH.IProp r (Action pa cs m))
+setMenuProps props = props <>
+  [ HP.ref menuRef
+  ]
+
 type ItemProps r =
   ( onClick :: ME.MouseEvent
   , onMouseEnter :: ME.MouseEvent
@@ -186,7 +204,8 @@ setItemProps
   -> Array (HH.IProp (ItemProps r) (Action pa cs m))
   -> Array (HH.IProp (ItemProps r) (Action pa cs m))
 setItemProps index props = props <>
-  [ HE.onClick $ Just <<< const (OnClickItem index)
+  [ HH.attr (HH.AttrName "data-nselect-item") (show index)
+  , HE.onClick $ Just <<< const (OnClickItem index)
   , HE.onMouseEnter $ Just <<< const (OnMouseEnterItem index)
   ]
 
@@ -213,6 +232,30 @@ handleVisibilityChange :: forall pa cs m. Boolean -> DSL pa cs m Unit
 handleVisibilityChange isOpen = do
   H.modify_ $ _ { isOpen = isOpen }
   H.raise $ VisibilityChanged isOpen
+
+handleHighlightedIndexChange
+  :: forall pa cs m
+   . MonadEffect m
+  => Int
+  -> DSL pa cs m Unit
+handleHighlightedIndexChange index = do
+  H.modify_ $ _ { highlightedIndex = index }
+  H.getHTMLElementRef menuRef >>= traverse_ \menu -> H.liftEffect $ do
+    querySelector selector (HTMLElement.toParentNode menu) >>= traverse_ \itemEl -> do
+      let
+        menuEl = HTMLElement.toElement menu
+        item = unsafeCoerce itemEl
+      scrollTop <- Element.scrollTop menuEl
+      clientHeight <- Element.clientHeight menuEl
+      offsetTop <- HTMLElement.offsetTop item
+      offsetHeight <- HTMLElement.offsetHeight item
+      if scrollTop + clientHeight < offsetTop + offsetHeight
+        then Element.setScrollTop (offsetTop + offsetHeight - clientHeight) menuEl
+        else if offsetTop < scrollTop
+          then Element.setScrollTop offsetTop menuEl
+          else pure unit
+  where
+  selector = QuerySelector $ "[data-nselect-item='" <> show index <> "']"
 
 handleAction
   :: forall pa cs m
@@ -252,14 +295,16 @@ handleAction = case _ of
     case KE.key kbEvent of
       "ArrowUp" -> do
         H.liftEffect $ Event.preventDefault event
-        H.modify_ \s -> s
-          { highlightedIndex = max 0 (s.highlightedIndex - 1) }
+        s <- H.get
+        let nextIndex = max 0 (s.highlightedIndex - 1)
+        when (nextIndex /= s.highlightedIndex) $
+          handleHighlightedIndexChange nextIndex
       "ArrowDown" -> do
         H.liftEffect $ Event.preventDefault event
-        H.modify_ \s -> s
-          { highlightedIndex =
-            min (s.props.itemCount - 1) (s.highlightedIndex + 1)
-          }
+        s <- H.get
+        let nextIndex = min (s.props.itemCount - 1) (s.highlightedIndex + 1)
+        when (nextIndex /= s.highlightedIndex) $
+          handleHighlightedIndexChange nextIndex
       "Enter" -> H.gets _.highlightedIndex >>= H.raise <<< Selected
       _ -> pure unit
 

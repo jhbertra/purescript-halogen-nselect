@@ -37,9 +37,12 @@ items :: Array String
 items =
   [ "purescript-css-validate"
   , "purescript-halogen-color-picker"
+  , "purescript-halogen-day-picker"
   , "purescript-halogen-nselect"
+  , "purescript-halogen-storybook"
   , "purescript-halogen-transition"
   , "purescript-jest"
+  , "purescript-svg-parser"
   , "purescript-svgo"
   , "svgen"
   ]
@@ -61,11 +64,14 @@ renderSelect state st =
       ]
     )
   , guard st.isOpen $> HH.div
-    [ class_ "Dropdown overflow-y-auto"
-    , style "max-height: 10rem;"
+    [ class_ "Dropdown"
     ]
-    [ HH.ul_ $
-        state.items # Array.mapWithIndex \index item ->
+    [ HH.ul
+      ( Select.setMenuProps
+        [ class_ "overflow-y-auto"
+        , style "max-height: 10rem;"
+        ]
+      ) $ state.items # Array.mapWithIndex \index item ->
       HH.li
       ( Select.setItemProps index
         [ class_ $ "py-1 px-3 cursor-pointer" <>
