@@ -8,6 +8,7 @@ import Data.Const (Const)
 import Data.Foldable (for_)
 import Data.Maybe (Maybe(..))
 import Data.Monoid as Monoid
+import Data.String as String
 import Data.Symbol (SProxy(..))
 import Effect.Aff (Aff)
 import Halogen as H
@@ -23,6 +24,7 @@ data Action
 type State =
   { value :: String
   , items :: Array String
+  , filteredItems :: Array String
   }
 
 type Slots =
@@ -51,6 +53,7 @@ initialState :: State
 initialState =
   { value: ""
   , items
+  , filteredItems: items
   }
 
 renderSelect :: State -> Select.State -> Select.HTML Action () Aff
@@ -71,7 +74,7 @@ renderSelect state st =
         [ class_ "overflow-y-auto"
         , style "max-height: 10rem;"
         ]
-      ) $ state.items # Array.mapWithIndex \index item ->
+      ) $ state.filteredItems # Array.mapWithIndex \index item ->
       HH.li
       ( Select.setItemProps index
         [ class_ $ "py-1 px-3 cursor-pointer" <>
@@ -90,7 +93,7 @@ render state =
     [ HH.text "Use ArrowUp/ArrowDown to change selection, Enter to confirm."]
   , HH.slot _dropdown unit Select.component
     { render: renderSelect state
-    , itemCount: Array.length state.items
+    , itemCount: Array.length state.filteredItems
     } $ Just <<< HandleDropdown
   ]
 
@@ -110,6 +113,10 @@ handleAction (HandleDropdown msg) = case msg of
       H.modify_ $ _ { value = item }
     void $ H.query _dropdown unit Select.close
   Select.InputValueChanged value -> do
-    H.modify_ $ _ { value = value }
+    H.modify_ $ \state -> state
+      { value = value
+      , filteredItems = Array.filter (\s -> String.contains (String.Pattern value) s) state.items
+      }
+    void $ H.query _dropdown unit $ Select.highlight 0
   Select.VisibilityChanged _ -> pure unit
   Select.Emit q -> handleAction q
