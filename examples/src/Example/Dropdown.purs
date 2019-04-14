@@ -1,6 +1,6 @@
 module Example.Dropdown where
 
-import Prelude
+import Example.Prelude
 
 import Control.MonadPlus (guard)
 import Data.Const (Const)
@@ -41,13 +41,16 @@ renderSelect state st =
   HH.div
   ( Select.setRootProps []
   ) $ join
-  [ pure $ HH.div
+  [ pure $ HH.button
     ( Select.setToggleProps [])
     [ HH.text "toggle" ]
-  , guard st.isOpen $> HH.div_
+  , guard st.isOpen $> HH.div
+    [ class_ "shadow-md p-4"
+    , style "width: 20rem;"
+    ]
     [ HH.input
       [ HP.value state.value
-      , HE.onValueInput $ Just <<< \v -> Select.raise $ OnInput v
+      , HE.onValueInput $ Just <<< Select.raise <<< OnInput
       ]
     , HH.div_
       [ HH.text $ "You typed: " <> state.value
@@ -58,7 +61,10 @@ renderSelect state st =
 render :: State -> HTML
 render state =
   HH.div_
-  [ HH.slot _dropdown unit Select.component
+  [ HH.p
+    [ class_ "mb-3"]
+    [ HH.text "Trigger parent action from dropdown."]
+  , HH.slot _dropdown unit Select.component
     { render: renderSelect state
     , itemCount: 0
     } $ Just <<< HandleDropdown

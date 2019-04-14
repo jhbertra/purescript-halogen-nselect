@@ -1,12 +1,13 @@
 module Example.TwoInputs where
 
-import Prelude
+import Example.Prelude
 
 import Control.MonadPlus (guard)
 import Data.Array as Array
 import Data.Const (Const)
 import Data.Foldable (for_)
 import Data.Maybe (Maybe(..))
+import Data.Monoid as Monoid
 import Data.Symbol (SProxy(..))
 import Effect.Aff (Aff)
 import Halogen as H
@@ -56,9 +57,6 @@ initialState =
   , items
   }
 
-style :: forall r i. String -> HH.IProp ("style" :: String | r) i
-style = HH.attr (HH.AttrName "style")
-
 renderSelect
   :: State
   -> DropdownSlot
@@ -75,13 +73,17 @@ renderSelect state slot st =
       [ HP.value value
       ]
     )
-  , guard st.isOpen $> HH.div_
-    [ HH.ul
-      [ style "list-style: none;"
-      ] $ state.items # Array.mapWithIndex \index item ->
+  , guard st.isOpen $> HH.div
+    [ class_ "shadow-md absolute"
+    , style "width: 20rem;"
+    ]
+    [ HH.ul_ $
+        state.items # Array.mapWithIndex \index item ->
       HH.li
       ( Select.setItemProps index
-        [ style $ getStyle index ]
+        [ class_ $ "py-1 px-3 cursor-pointer" <>
+            Monoid.guard (index == st.highlightedIndex) " bg-blue-300"
+        ]
       )
       [ HH.text item ]
     ]
@@ -90,23 +92,27 @@ renderSelect state slot st =
   value = case slot of
     DropdownFrom -> state.from
     DropdownTo -> state.to
-  getStyle index =
-    if index == st.highlightedIndex
-    then "background: cyan;"
-    else ""
 
 render :: State -> HTML
 render state =
-  HH.div
-  [ style "display: flex;"]
-  [ HH.slot _dropdown DropdownFrom Select.component
-    { render: renderSelect state DropdownFrom
-    , itemCount: Array.length state.items
-    } $ Just <<< HandleDropdown DropdownFrom
-  , HH.slot _dropdown DropdownTo Select.component
-    { render: renderSelect state DropdownTo
-    , itemCount: Array.length state.items
-    } $ Just <<< HandleDropdown DropdownTo
+  HH.div_
+  [ HH.p
+    [ class_ "mb-3"]
+    [ HH.text "Use TAB to complete the first and focus the second input."]
+  , HH.div
+    [ class_ "flex" ]
+    [ HH.slot _dropdown DropdownFrom Select.component
+      { render: renderSelect state DropdownFrom
+      , itemCount: Array.length state.items
+      } $ Just <<< HandleDropdown DropdownFrom
+    , HH.span
+      [ class_ "mx-4" ]
+      [ HH.text "-" ]
+    , HH.slot _dropdown DropdownTo Select.component
+      { render: renderSelect state DropdownTo
+      , itemCount: Array.length state.items
+      } $ Just <<< HandleDropdown DropdownTo
+    ]
   ]
 
 component :: H.Component HH.HTML Query Unit Void Aff

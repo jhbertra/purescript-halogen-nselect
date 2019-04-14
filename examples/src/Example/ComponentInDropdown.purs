@@ -1,6 +1,6 @@
 module Example.ComponentInDropdown where
 
-import Prelude
+import Example.Prelude
 
 import Control.MonadPlus (guard)
 import Data.Const (Const)
@@ -45,18 +45,26 @@ renderSelect state st =
   HH.div
   ( Select.setRootProps []
   ) $ join
-  [ pure $ HH.div
+  [ pure $ HH.button
     ( Select.setToggleProps [])
     [ HH.text "toggle" ]
   , guard st.isOpen $>
-      HH.slot _child unit Child.component unit
-        (Just <<< Select.raise <<< HandleChild)
+      HH.div
+      [ class_ "shadow-md p-4"
+      , style "width: 20rem;"
+      ]
+      [ HH.slot _child unit Child.component unit
+          (Just <<< Select.raise <<< HandleChild)
+      ]
   ]
 
 render :: State -> HTML
 render state =
   HH.div_
-  [ HH.slot _dropdown unit Select.component
+  [ HH.p
+    [ class_ "mb-3"]
+    [ HH.text "Render another component inside dropdown."]
+  , HH.slot _dropdown unit Select.component
     { render: renderSelect state
     , itemCount: 0
     } $ Just <<< HandleDropdown

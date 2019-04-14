@@ -1,12 +1,13 @@
 module Example.Autocomplete where
 
-import Prelude
+import Example.Prelude
 
 import Control.MonadPlus (guard)
 import Data.Array as Array
 import Data.Const (Const)
 import Data.Foldable (for_)
 import Data.Maybe (Maybe(..))
+import Data.Monoid as Monoid
 import Data.Symbol (SProxy(..))
 import Effect.Aff (Aff)
 import Halogen as H
@@ -46,9 +47,6 @@ initialState =
   , items
   }
 
-style :: forall r i. String -> HH.IProp ("style" :: String | r) i
-style = HH.attr (HH.AttrName "style")
-
 renderSelect :: State -> Select.State -> Select.HTML Action () Aff
 renderSelect state st =
   HH.div
@@ -59,27 +57,29 @@ renderSelect state st =
       [ HP.value state.value
       ]
     )
-  , guard st.isOpen $> HH.div_
-    [ HH.ul
-      [ style "list-style: none;"
-      ] $ state.items # Array.mapWithIndex \index item ->
+  , guard st.isOpen $> HH.div
+    [ class_ "shadow-md"
+    , style "width: 20rem;"
+    ]
+    [ HH.ul_ $
+        state.items # Array.mapWithIndex \index item ->
       HH.li
       ( Select.setItemProps index
-        [ style $ getStyle index ]
+        [ class_ $ "py-1 px-3 cursor-pointer" <>
+            Monoid.guard (index == st.highlightedIndex) " bg-blue-300"
+        ]
       )
       [ HH.text item ]
     ]
   ]
-  where
-  getStyle index =
-    if index == st.highlightedIndex
-    then "background: cyan;"
-    else ""
 
 render :: State -> HTML
 render state =
   HH.div_
-  [ HH.slot _dropdown unit Select.component
+  [ HH.p
+    [ class_ "mb-3"]
+    [ HH.text "Use ArrowUp/ArrowDown to change selection, Enter to confirm."]
+  , HH.slot _dropdown unit Select.component
     { render: renderSelect state
     , itemCount: Array.length state.items
     } $ Just <<< HandleDropdown
