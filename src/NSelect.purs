@@ -16,6 +16,7 @@ module NSelect
   , component
   , close
   , focus
+  , highlight
   , raise
   , select
   ) where
@@ -59,6 +60,7 @@ data Query a
   = Open a
   | Close a
   | Focus a
+  | Highlight Int a
   | Select a
 
 data Action pa cs m
@@ -347,13 +349,15 @@ handleQuery = case _ of
       H.liftEffect $ HTMLElement.focus el
     pure $ Just n
 
+  Highlight index n -> do
+    H.modify_ $ _ { highlightedIndex = index }
+    pure $ Just n
+
   Select n -> do
     H.gets _.highlightedIndex >>= H.raise <<< Selected
     pure $ Just n
 
 -- | Following are helpers so that you can query from the parent component.
--- | Query(..) are exposed in case you want to override the whole
--- | `setInputProps` behavior. Normally these helpers are enough.
 open :: Query Unit
 open = Open unit
 
@@ -362,6 +366,9 @@ close = Close unit
 
 focus :: Query Unit
 focus = Focus unit
+
+highlight :: Int -> Query Unit
+highlight index = Highlight index unit
 
 raise :: forall pa cs m. pa -> Action pa cs m
 raise f = Raise f
