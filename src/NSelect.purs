@@ -1,8 +1,8 @@
 module NSelect
   ( Props
   , Message(..)
-  , Query(..)
-  , Action(..)
+  , Query
+  , Action
   , State
   , HTML
   , Slot
@@ -242,19 +242,22 @@ handleHighlightedIndexChange
   -> DSL pa cs m Unit
 handleHighlightedIndexChange index = do
   H.modify_ $ _ { highlightedIndex = index }
+
+  -- Scroll item into view if needed
   H.getHTMLElementRef menuRef >>= traverse_ \menu -> H.liftEffect $ do
     querySelector selector (HTMLElement.toParentNode menu) >>= traverse_ \itemEl -> do
       let
         menuEl = HTMLElement.toElement menu
         item = unsafeCoerce itemEl
       scrollTop <- Element.scrollTop menuEl
-      clientHeight <- Element.clientHeight menuEl
-      offsetTop <- HTMLElement.offsetTop item
-      offsetHeight <- HTMLElement.offsetHeight item
-      if scrollTop + clientHeight < offsetTop + offsetHeight
-        then Element.setScrollTop (offsetTop + offsetHeight - clientHeight) menuEl
-        else if offsetTop < scrollTop
-          then Element.setScrollTop offsetTop menuEl
+      menuHeight <- Element.clientHeight menuEl
+      itemOffsetTop <- HTMLElement.offsetTop item
+      itemOffsetHeight <- HTMLElement.offsetHeight item
+
+      if scrollTop + menuHeight < itemOffsetTop + itemOffsetHeight
+        then Element.setScrollTop (itemOffsetTop + itemOffsetHeight - menuHeight) menuEl
+        else if itemOffsetTop < scrollTop
+          then Element.setScrollTop itemOffsetTop menuEl
           else pure unit
   where
   selector = QuerySelector $ "[data-nselect-item='" <> show index <> "']"
