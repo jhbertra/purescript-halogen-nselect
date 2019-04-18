@@ -231,9 +231,17 @@ component = H.mkComponent
       }
   }
 
-handleVisibilityChange :: forall pa cs m. Boolean -> DSL pa cs m Unit
+handleVisibilityChange
+  :: forall pa cs m
+   . MonadEffect m
+  => Boolean -> DSL pa cs m Unit
 handleVisibilityChange isOpen = do
-  H.modify_ $ _ { isOpen = isOpen }
+  state <- H.modify $ _ { isOpen = isOpen }
+
+  -- Make sure highlighted item is visible when dropdown becomes open.
+  when isOpen $
+    scrollIntoViewIfNeeded state.highlightedIndex
+
   H.raise $ VisibilityChanged isOpen
 
 handleHighlightedIndexChange
@@ -243,8 +251,14 @@ handleHighlightedIndexChange
   -> DSL pa cs m Unit
 handleHighlightedIndexChange index = do
   H.modify_ $ _ { highlightedIndex = index }
+  scrollIntoViewIfNeeded index
 
-  -- Scroll item into view if needed
+scrollIntoViewIfNeeded
+  :: forall pa cs m
+   . MonadEffect m
+  => Int
+  -> DSL pa cs m Unit
+scrollIntoViewIfNeeded index = do
   H.getHTMLElementRef menuRef >>= traverse_ \menu -> H.liftEffect $ do
     querySelector selector (HTMLElement.toParentNode menu) >>= traverse_ \itemEl -> do
       let
@@ -297,8 +311,9 @@ handleAction = case _ of
     handleVisibilityChange true
 
   OnKeyDownInput kbEvent -> do
+    state <- H.get
     let event = KE.toEvent kbEvent
-    case KE.key kbEvent of
+    when state.isOpen $ case KE.key kbEvent of
       "ArrowUp" -> do
         H.liftEffect $ Event.preventDefault event
         s <- H.get
