@@ -63,7 +63,8 @@ renderSelect state st =
   ) $ join
   [ pure $ HH.input
     ( Select.setInputProps
-      [ HP.value state.value
+      [ style "width: 20rem"
+      , HP.value state.value
       ]
     )
   , guard st.isOpen $> HH.div
