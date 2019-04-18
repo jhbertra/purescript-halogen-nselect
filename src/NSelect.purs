@@ -14,6 +14,7 @@ module NSelect
   , setMenuProps
   , setItemProps
   , component
+  , open
   , close
   , focus
   , highlight
