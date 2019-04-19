@@ -20,6 +20,7 @@ module NSelect
   , highlight
   , raise
   , select
+  , getState
   ) where
 
 import Prelude
@@ -63,6 +64,7 @@ data Query a
   | Focus a
   | Highlight Int a
   | Select a
+  | GetState (State -> a)
 
 data Action pa cs m
   = Init
@@ -369,12 +371,16 @@ handleQuery = case _ of
     pure $ Just n
 
   Highlight index n -> do
-    H.modify_ $ _ { highlightedIndex = index }
+    handleHighlightedIndexChange index
     pure $ Just n
 
   Select n -> do
     H.gets _.highlightedIndex >>= H.raise <<< Selected
     pure $ Just n
+
+  GetState q -> do
+    state <- H.get
+    pure $ Just $ q $ innerStateToState state
 
 -- | Following are helpers so that you can query from the parent component.
 open :: Query Unit
@@ -390,7 +396,10 @@ highlight :: Int -> Query Unit
 highlight index = Highlight index unit
 
 raise :: forall pa cs m. pa -> Action pa cs m
-raise f = Raise f
+raise = Raise
 
 select :: Query Unit
 select = Select unit
+
+getState :: forall a. (State -> a) -> Query a
+getState = GetState
