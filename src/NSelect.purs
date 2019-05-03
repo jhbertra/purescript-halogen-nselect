@@ -328,7 +328,10 @@ handleAction = case _ of
         let nextIndex = min (s.props.itemCount - 1) (s.highlightedIndex + 1)
         when (nextIndex /= s.highlightedIndex) $
           handleHighlightedIndexChange nextIndex
-      "Enter" -> H.gets _.highlightedIndex >>= H.raise <<< Selected
+      "Enter" -> do
+        s <- H.get
+        when (s.props.itemCount > 0) $
+          H.raise $ Selected s.highlightedIndex
       _ -> pure unit
 
   OnKeyDownInput' parentOnKeyDown kbEvent -> do
