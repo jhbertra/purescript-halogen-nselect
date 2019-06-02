@@ -118,6 +118,5 @@ handleAction (HandleDropdown msg) = case msg of
       { value = value
       , filteredItems = Array.filter (\s -> String.contains (String.Pattern value) s) state.items
       }
-    void $ H.query _dropdown unit $ Select.highlight 0
   Select.VisibilityChanged _ -> pure unit
   Select.Emit q -> handleAction q

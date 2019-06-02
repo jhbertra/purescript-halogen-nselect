@@ -347,6 +347,7 @@ handleAction = case _ of
       }
 
   OnValueInput value -> do
+    handleHighlightedIndexChange 0
     H.raise $ InputValueChanged value
 
   Raise pa -> do
