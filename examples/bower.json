@@ -8,7 +8,7 @@
     "output"
   ],
   "dependencies": {
-    "purescript-halogen-storybook": "https://github.com/rnons/purescript-halogen-storybook.git#0cd4f1b48cc5adb7bd0437e667d47c6a909ab079"
+    "purescript-halogen-storybook": "https://github.com/rnons/purescript-halogen-storybook.git#0627e1a3b0aa2116c1849eaa2d1b7604156afffb"
   },
   "devDependencies": {
     "purescript-psci-support": "^4.0.0",
