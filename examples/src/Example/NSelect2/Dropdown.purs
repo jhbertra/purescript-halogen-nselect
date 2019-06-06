@@ -82,7 +82,6 @@ handleAction :: Action -> H.HalogenM State Action Slots Void Aff Unit
 handleAction (OnInput value) = do
   H.modify_ $ _ { value = value }
 handleAction (HandleDropdown msg) = do
-  traceM msg
   case msg of
     Select.Emit q -> do
       handleAction q

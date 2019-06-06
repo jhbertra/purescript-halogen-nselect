@@ -5,12 +5,10 @@ import Prelude
 import Data.Array as Array
 import Data.Foldable (traverse_)
 import Data.Maybe (Maybe(..))
-import Debug.Trace (traceM)
 import Effect.Aff as Aff
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect)
 import Halogen as H
-import Halogen.Component as HC
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
@@ -34,7 +32,6 @@ data Query a
   | Highlight Int a
   | Select a
   | GetState (RenderState -> a)
-  -- | ExtraQuery q
 
 type State item r =
   { select :: SelectState
@@ -180,7 +177,7 @@ setInputProps props = props <> sharedInputProps <>
   [ HE.onKeyDown $ Just <<< OnKeyDownInput
   ]
 
-type KeyDownHandler pa = KE.KeyboardEvent -> pa
+type KeyDownHandler pa = KE.KeyboardEvent -> (Action pa)
 
 -- | setInputProps' does everything setInputProps does, but also pass the
 -- | keyboardEvent back to the parent component, so the parent can handle more
@@ -231,22 +228,12 @@ type Spec item s a cs i o m =
   , handleMessage :: Message -> DSL item s a cs o m Unit
   }
 
-defaultEval' :: forall item s a cs i o m. Spec item s a cs i o m
-defaultEval' =
+defaultEval :: forall item s a cs i o m. Spec item s a cs i o m
+defaultEval =
   { initialize: Nothing
   , receive: const Nothing
   , handleAction: const $ pure unit
   , handleMessage: const $ pure unit
-  }
-
-defaultEval
-  :: forall item s a sl i o m
-   . MonadAff m
-  => HC.EvalSpec (State item s) Query (Action a) sl i o m
-defaultEval = H.defaultEval
-  { initialize = Just Init
-  , handleAction = handleAction (const $ pure unit) (const $ pure unit)
-  , handleQuery = handleQuery (const $ pure unit)
   }
 
 mkEval
@@ -259,16 +246,16 @@ mkEval spec =
   H.mkEval $ H.defaultEval
     { initialize = Just Init
     , receive = spec.receive
-    , handleAction = handleAction' spec
-    , handleQuery = handleQuery' spec
+    , handleAction = handleAction spec
+    , handleQuery = handleQuery spec
     }
 
-handleAction'
+handleAction
   :: forall item s a cs i o m
    . MonadAff m
   => Spec item s a cs i o m
   -> Action a -> DSL item s a cs o m Unit
-handleAction' spec = case _ of
+handleAction spec = case _ of
   Init -> do
     win <- H.liftEffect Web.window
     void $ H.subscribe $
@@ -312,8 +299,8 @@ handleAction' spec = case _ of
       _ -> pure unit
 
   OnKeyDownInput' parentOnKeyDown kbEvent -> do
-    handleAction' spec (OnKeyDownInput kbEvent)
-    spec.handleAction $ parentOnKeyDown kbEvent
+    handleAction spec (OnKeyDownInput kbEvent)
+    handleAction spec $ parentOnKeyDown kbEvent
 
   OnClickItem index -> do
     spec.handleMessage $ Selected index
@@ -331,12 +318,12 @@ handleAction' spec = case _ of
   ExtraAction action -> do
     spec.handleAction action
 
-handleQuery'
+handleQuery
   :: forall item s a cs i o m n
    . MonadAff m
   => Spec item s a cs i o m
   -> Query n -> DSL item s a cs o m (Maybe n)
-handleQuery' spec = case _ of
+handleQuery spec = case _ of
   Open n -> do
     handleVisibilityChange true
     pure $ Just n
@@ -356,118 +343,8 @@ handleQuery' spec = case _ of
     pure $ Just n
 
   Select n -> do
-    traceM "select"
     H.gets _.select.highlightedIndex >>= spec.handleMessage <<< Selected
     pure $ Just n
-
-  -- ExtraQuery n -> do
-  --   pure Nothing
-
-  GetState q -> do
-    state <- H.get
-    pure $ Just $ q $ selectStateToRenderState state.select
-
-handleAction
-  :: forall item s a cs o m
-   . MonadAff m
-  => (a -> DSL item s a cs o m Unit)
-  -> (Message -> DSL item s a cs o m Unit)
-  -> Action a
-  -> DSL item s a cs o m Unit
-handleAction handleExtra handleMessage = case _ of
-  Init -> do
-    win <- H.liftEffect Web.window
-    void $ H.subscribe $
-      ES.eventListenerEventSource ET.mousedown (Window.toEventTarget win)
-        (const $ Just OnWindowMouseDown)
-
-  OnWindowMouseDown -> do
-    { select } <- H.get
-    when (not select.clickedInside && select.isOpen) $ do
-      handleVisibilityChange false
-
-  OnMouseDownRoot -> do
-    H.modify_ $ _ { select { clickedInside = true } }
-
-  OnMouseUpRoot -> do
-    H.modify_ $ _ { select { clickedInside = false } }
-
-  OnMouseDownToggle -> do
-    { select } <- H.get
-    handleVisibilityChange $ not select.isOpen
-
-  OnFocusInput -> do
-    handleVisibilityChange true
-
-  OnKeyDownInput kbEvent -> do
-    let event = KE.toEvent kbEvent
-    case KE.key kbEvent of
-      "ArrowUp" -> do
-        H.liftEffect $ Event.preventDefault event
-        s <- H.get
-        let nextIndex = max 0 (s.select.highlightedIndex - 1)
-        when (nextIndex /= s.select.highlightedIndex) $
-          handleHighlightedIndexChange nextIndex
-      "ArrowDown" -> do
-        H.liftEffect $ Event.preventDefault event
-        s <- H.get
-        let nextIndex = min (Array.length s.items - 1) (s.select.highlightedIndex + 1)
-        when (nextIndex /= s.select.highlightedIndex) $
-          handleHighlightedIndexChange nextIndex
-      "Enter" -> H.gets _.select.highlightedIndex >>= handleMessage <<< Selected
-      _ -> pure unit
-
-  OnKeyDownInput' parentOnKeyDown kbEvent -> do
-    pure unit
-    -- handleAction (OnKeyDownInput kbEvent)
-
-  OnClickItem index -> do
-    handleMessage $ Selected index
-
-  OnMouseEnterItem index -> do
-    H.modify_ $ _
-      { select
-          { highlightedIndex = index }
-      }
-
-  OnValueInput value -> do
-    handleHighlightedIndexChange 0
-    handleMessage $ InputValueChanged value
-
-  ExtraAction action -> do
-    handleExtra action
-
-handleQuery
-  :: forall item s a cs o m n
-   . MonadAff m
-  => (Message -> DSL item s a cs o m Unit)
-  -> Query n
-  -> DSL item s a cs o m (Maybe n)
-handleQuery handleMessage = case _ of
-  Open n -> do
-    handleVisibilityChange true
-    pure $ Just n
-
-  Close n -> do
-    handleVisibilityChange false
-    pure $ Just n
-
-  Focus n -> do
-    H.getHTMLElementRef inputRef >>= traverse_ \el -> do
-      H.liftAff $ Aff.delay $ Aff.Milliseconds 0.0
-      H.liftEffect $ HTMLElement.focus el
-    pure $ Just n
-
-  Highlight index n -> do
-    handleHighlightedIndexChange index
-    pure $ Just n
-
-  Select n -> do
-    H.gets _.select.highlightedIndex >>= handleMessage <<< Selected
-    pure $ Just n
-
-  -- ExtraQuery n -> do
-  --   pure Nothing
 
   GetState q -> do
     state <- H.get

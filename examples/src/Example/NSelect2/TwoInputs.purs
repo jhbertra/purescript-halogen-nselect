@@ -68,7 +68,7 @@ renderSelect state slot st =
   ) $ join
   [ pure $ HH.input
     ( Select.setInputProps'
-      { onKeyDown: \e -> Select.Raise $ OnKeyDownInput slot e
+      { onKeyDown: \e -> Select.raise $ OnKeyDownInput slot e
       }
       [ HP.value value
       ]

@@ -4,7 +4,6 @@ import Example.Prelude
 
 import Control.MonadPlus (guard)
 import Data.Array as Array
-import Data.Const (Const)
 import Data.Foldable (for_)
 import Data.Monoid as Monoid
 import Data.String as String
@@ -86,8 +85,9 @@ component :: H.Component HH.HTML Query Unit Message Aff
 component = H.mkComponent
   { initialState: const initialState
   , render
-  , eval: H.mkEval $ SC.defaultEval
-      { handleAction = SC.handleAction handleAction handleMessage
+  , eval: SC.mkEval $ SC.defaultEval
+      { handleAction = handleAction
+      , handleMessage = handleMessage
       }
   }
 

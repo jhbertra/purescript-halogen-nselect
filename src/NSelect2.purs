@@ -1,7 +1,6 @@
 module NSelect2
   ( module NSelect.Component
-  , Props
-  , ExtraAction(..)
+  , ExtraAction
   , Query'
   , Output(..)
   , Slot
@@ -43,7 +42,6 @@ type Action item pa cs m
 
 type HTML item pa cs m = H.ComponentHTML (Action item pa cs m) cs m
 
--- type DSL item pa cs m = SC.DSL item ExtraStateRow
 type DSL item pa cs m =
   H.HalogenM (InnerState item pa cs m) (Action item pa cs m) cs (Output pa) m
 
@@ -78,32 +76,20 @@ component
 component = H.mkComponent
   { initialState
   , render
-  , eval: SC.mkEval $ SC.defaultEval'
+  , eval: SC.mkEval $ SC.defaultEval
       { receive = Just <<< SC.ExtraAction <<< Receive
       , handleAction = handleAction
       , handleMessage = handleSelectMessage
       }
-      -- { handleAction = SC.handleAction handleAction handleSelectMessage
-      -- { handleAction = SC.handleAction handleAction handleSelectMessage
-      -- , handleQuery = SC.handleQuery H.raise
-      -- , handleQuery = SC.handleQuery handleSelectMessage
-      -- , handleQuery = SC.handleQuery (const $ pure unit)
-      -- , receive = Just <<< SC.ExtraAction <<< Receive
-      -- }
   }
 
 handleAction :: forall item pa cs m. ExtraAction item pa cs m -> DSL item pa cs m Unit
 handleAction = case _ of
   Receive props -> H.modify_ $ _ { props = props }
-  Raise pa -> do
-    -- pure unit
-    H.raise $ Emit pa
+  Raise pa -> H.raise $ Emit pa
 
--- handleSelectMessage :: forall item pa pa' cs m. SC.Message pa' -> DSL item pa cs m Unit
--- handleSelectMessage :: forall item pa cs m. SC.Message -> DSL item pa cs m Unit
--- handleSelectMessage = H.raise
+handleSelectMessage :: forall item pa cs m. SC.Message -> DSL item pa cs m Unit
 handleSelectMessage = case _ of
-  -- Emit _ -> pure unit
   SC.Selected v -> H.raise $ Selected v
   SC.InputValueChanged v -> H.raise $ InputValueChanged v
   SC.VisibilityChanged v -> H.raise $ VisibilityChanged v
