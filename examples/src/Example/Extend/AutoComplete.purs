@@ -6,14 +6,15 @@ import Control.MonadPlus (guard)
 import Data.Array as Array
 import Data.Const (Const)
 import Data.Foldable (for_)
-import Data.Maybe (Maybe(..))
 import Data.Monoid as Monoid
-import Data.Symbol (SProxy(..))
+import Data.String as String
 import Effect.Aff (Aff)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import NSelect.Component as Select
+
+type Message = Void
 
 type Query = Const Void
 
@@ -31,10 +32,16 @@ type HTML = H.ComponentHTML Action () Aff
 
 items :: Array String
 items =
-  [ "surprise"
-  , "items"
-  , "are"
-  , "fixed"
+  [ "purescript-css-validate"
+  , "purescript-halogen-color-picker"
+  , "purescript-halogen-day-picker"
+  , "purescript-halogen-nselect"
+  , "purescript-halogen-storybook"
+  , "purescript-halogen-transition"
+  , "purescript-jest"
+  , "purescript-svg-parser"
+  , "purescript-svgo"
+  , "svgen"
   ]
 
 initialState :: State
@@ -44,9 +51,6 @@ initialState =
   , items
   , filteredItems: items
   }
-
-style :: forall r i. String -> HH.IProp ("style" :: String | r) i
-style = HH.attr (HH.AttrName "style")
 
 render :: State -> HTML
 render state =
@@ -77,28 +81,8 @@ render state =
       [ HH.text item ]
     ]
   ]
-  --   ( Select.setInputProps
-  --     [ HP.value state.value
-  --     ]
-  --   )
-  -- , guard state.select.isOpen $> HH.div_
-  --   [ HH.ul
-  --     [ style "list-style: none;"
-  --     ] $ state.items # Array.mapWithIndex \index item ->
-  --     HH.li
-  --     ( Select.setItemProps index
-  --       [ style $ getStyle index ]
-  --     )
-  --     [ HH.text item ]
-  --   ]
-  -- ]
-  where
-  getStyle index =
-    if index == state.select.highlightedIndex
-    then "background: cyan;"
-    else ""
 
-component :: H.Component HH.HTML Query Unit Void Aff
+component :: H.Component HH.HTML Query Unit Message Aff
 component = H.mkComponent
   { initialState: const initialState
   , render
@@ -107,27 +91,20 @@ component = H.mkComponent
       }
   }
 
-type DSL = H.HalogenM State Action () Void Aff
+type DSL = H.HalogenM State Action () Message Aff
 
-handleAction :: Void -> H.HalogenM State Action () Void Aff Unit
+handleAction :: Void -> H.HalogenM State Action () Message Aff Unit
 handleAction = case _ of
   _ -> pure unit
--- handleAction (HandleDropdown msg) = case msg of
-  -- Select.InputValueChanged value -> do
-  --   H.modify_ $ _ { value = value }
-  -- Select.VisibilityChanged _ -> pure unit
-  -- Select.Emit q -> handleAction q
 
 handleMessage :: Select.Message -> DSL Unit
 handleMessage = case _ of
   Select.Selected index -> do
     state <- H.get
     for_ (Array.index state.filteredItems index) \item ->
-      H.modify_ $ _ { value = item }
-    -- void $ H.query _dropdown unit Select.close
-  -- Select.InputValueChanged value -> do
-  --   H.modify_ $ \state -> state
-  --     { value = value
-  --     , filteredItems = Array.filter (\s -> String.contains (String.Pattern value) s) state.items
-  --     }
-  _ -> pure unit
+      H.modify_ $ _ { value = item, select { isOpen = false } }
+  Select.InputValueChanged value -> do
+    H.modify_ $ \state -> state
+      { value = value
+      , filteredItems = Array.filter (\s -> String.contains (String.Pattern value) s) state.items
+      }

@@ -3,38 +3,41 @@ module NSelect.Component where
 import Prelude
 
 import Data.Array as Array
+import Data.Foldable (traverse_)
 import Data.Maybe (Maybe(..))
-import Data.Symbol (SProxy(..))
 import Effect.Aff.Class (class MonadAff)
+import Effect.Class (class MonadEffect)
 import Halogen as H
+import Halogen.Component as HC
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Query.EventSource as ES
-import Prim.Row (class Cons, class Lacks, class Union)
-import Record as Record
-import Type.Row (type (+))
+import Unsafe.Coerce (unsafeCoerce)
+import Web.DOM.Element as Element
+import Web.DOM.ParentNode (QuerySelector(..), querySelector)
 import Web.Event.Event as Event
 import Web.HTML as Web
+import Web.HTML.HTMLElement as HTMLElement
 import Web.HTML.Window as Window
 import Web.UIEvent.FocusEvent (FocusEvent)
 import Web.UIEvent.KeyboardEvent as KE
 import Web.UIEvent.MouseEvent as ME
 import Web.UIEvent.MouseEvent.EventTypes as ET
 
-type State i r =
-  { select :: SelectStateRow i
-  , items :: Array i
+type State item r =
+  { select :: SelectStateRow
+  , items :: Array item
   | r
   }
 
-type SelectStateRow i =
+type SelectStateRow =
   { isOpen :: Boolean
   , clickedInside :: Boolean
   , highlightedIndex :: Int
   }
 
-initialState :: forall i. SelectStateRow i
+initialState :: SelectStateRow
 initialState =
   { isOpen: false
   , clickedInside: false
@@ -43,6 +46,7 @@ initialState =
 
 data Message
   = Selected Int
+  | InputValueChanged String
 
 data Action a
   = Init
@@ -53,30 +57,63 @@ data Action a
   | ExtraAction a
   | OnFocusInput
   | OnKeyDownInput KE.KeyboardEvent
-  -- | OnKeyDownInput' (KeyDownHandler pa) KE.KeyboardEvent
   | OnClickItem Int
   | OnMouseEnterItem Int
   | OnValueInput String
-  -- | Raise pa
 
+defaultEval
+  :: forall x q s a sl i o m
+   . HC.EvalSpec (State x s) q (Action a) sl i o m
 defaultEval = H.defaultEval
   { initialize = Just Init
   }
 
-type DSL i s a cs m = H.HalogenM (State i s) (Action a) cs Void m
+type DSL item state action slot o m =
+  H.HalogenM (State item state) (Action action) slot o m
 
-handleVisibilityChange :: forall i s a cs m. Boolean -> DSL i s a cs m Unit
+handleVisibilityChange :: forall x s a sl o m. Boolean -> DSL x s a sl o m Unit
 handleVisibilityChange isOpen = do
   H.modify_ $ _ { select { isOpen = isOpen } }
-  -- H.raise $ VisibilityChanged isOpen
+
+handleHighlightedIndexChange
+  :: forall x s a sl o m
+   . MonadEffect m
+  => Int
+  -> DSL x s a sl o m Unit
+handleHighlightedIndexChange index = do
+  H.modify_ $ _ { select { highlightedIndex = index } }
+  scrollIntoViewIfNeeded index
+
+scrollIntoViewIfNeeded
+  :: forall item state act slot o m
+   . MonadEffect m
+  => Int
+  -> DSL item state act slot o m Unit
+scrollIntoViewIfNeeded index = do
+  H.getHTMLElementRef menuRef >>= traverse_ \menu -> H.liftEffect $ do
+    querySelector selector (HTMLElement.toParentNode menu) >>= traverse_ \itemEl -> do
+      let
+        menuEl = HTMLElement.toElement menu
+        item = unsafeCoerce itemEl
+      scrollTop <- Element.scrollTop menuEl
+      menuHeight <- Element.clientHeight menuEl
+      itemOffsetTop <- HTMLElement.offsetTop item
+      itemOffsetHeight <- HTMLElement.offsetHeight item
+      if scrollTop + menuHeight < itemOffsetTop + itemOffsetHeight
+        then Element.setScrollTop (itemOffsetTop + itemOffsetHeight - menuHeight) menuEl
+        else if itemOffsetTop < scrollTop
+          then Element.setScrollTop itemOffsetTop menuEl
+          else pure unit
+  where
+  selector = QuerySelector $ "[data-nselect-item='" <> show index <> "']"
 
 handleAction
-  :: forall i s a cs m
+  :: forall x s a sl o m
    . MonadAff m
-  => (a -> DSL i s a cs m Unit)
-  -> (Message -> DSL i s a cs m Unit)
+  => (a -> DSL x s a sl o m Unit)
+  -> (Message -> DSL x s a sl o m Unit)
   -> Action a
-  -> DSL i s a cs m Unit
+  -> DSL x s a sl o m Unit
 handleAction handleExtra handleMessage = case _ of
   Init -> do
     win <- H.liftEffect Web.window
@@ -107,18 +144,16 @@ handleAction handleExtra handleMessage = case _ of
     case KE.key kbEvent of
       "ArrowUp" -> do
         H.liftEffect $ Event.preventDefault event
-        H.modify_ \s -> s
-          { select
-              { highlightedIndex = max 0 (s.select.highlightedIndex - 1) }
-          }
+        s <- H.get
+        let nextIndex = max 0 (s.select.highlightedIndex - 1)
+        when (nextIndex /= s.select.highlightedIndex) $
+          handleHighlightedIndexChange nextIndex
       "ArrowDown" -> do
         H.liftEffect $ Event.preventDefault event
-        H.modify_ \s -> s
-          { select
-              { highlightedIndex =
-                   min (Array.length s.items - 1) (s.select.highlightedIndex + 1)
-              }
-          }
+        s <- H.get
+        let nextIndex = min (Array.length s.items - 1) (s.select.highlightedIndex + 1)
+        when (nextIndex /= s.select.highlightedIndex) $
+          handleHighlightedIndexChange nextIndex
       "Enter" -> H.gets _.select.highlightedIndex >>= handleMessage <<< Selected
       _ -> pure unit
 
@@ -132,8 +167,8 @@ handleAction handleExtra handleMessage = case _ of
       }
 
   OnValueInput value -> do
-    pure unit
-    -- H.raise $ InputValueChanged value
+    handleHighlightedIndexChange 0
+    handleMessage $ InputValueChanged value
 
   ExtraAction action -> do
     handleExtra action
