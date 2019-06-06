@@ -86,16 +86,11 @@ component = H.mkComponent
   { initialState: const initialState
   , render
   , eval: SC.mkEval $ SC.defaultEval
-      { handleAction = handleAction
-      , handleMessage = handleMessage
+      { handleMessage = handleMessage
       }
   }
 
 type DSL = H.HalogenM State Action () Message Aff
-
-handleAction :: Void -> H.HalogenM State Action () Message Aff Unit
-handleAction = case _ of
-  _ -> pure unit
 
 handleMessage :: SC.Message -> DSL Unit
 handleMessage = case _ of
@@ -109,4 +104,3 @@ handleMessage = case _ of
       , filteredItems = Array.filter (\s -> String.contains (String.Pattern value) s) state.items
       }
   SC.VisibilityChanged _ -> pure unit
-  -- SC.Emit _ -> pure unit
