@@ -1,7 +1,9 @@
 module NSelect2
   ( module NSelect.Component
-  , ExtraAction
+  , Props
+  , ExtraAction(..)
   , Query'
+  , Output(..)
   , Slot
   , Action
   , HTML
@@ -16,7 +18,7 @@ import Data.Maybe (Maybe(..))
 import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Halogen.HTML as HH
-import NSelect.Component (Query(..), Message(..), setRootProps, setToggleProps, setInputProps, setInputProps', setMenuProps, setItemProps)
+import NSelect.Component (Query(..), setRootProps, setToggleProps, setInputProps, setInputProps', setMenuProps, setItemProps)
 import NSelect.Component as SC
 
 type Props item pa cs m =
@@ -24,7 +26,13 @@ type Props item pa cs m =
   , items :: Array item
   }
 
-type Query' = SC.Query Void
+data Output pa
+  = Selected Int
+  | InputValueChanged String
+  | VisibilityChanged Boolean
+  | Emit pa
+
+type Query' = SC.Query
 
 data ExtraAction item pa cs m
   = Receive (Props item pa cs m)
@@ -35,10 +43,11 @@ type Action item pa cs m
 
 type HTML item pa cs m = H.ComponentHTML (Action item pa cs m) cs m
 
+-- type DSL item pa cs m = SC.DSL item ExtraStateRow
 type DSL item pa cs m =
-  H.HalogenM (InnerState item pa cs m) (Action item pa cs m) cs (Message pa) m
+  H.HalogenM (InnerState item pa cs m) (Action item pa cs m) cs (Output pa) m
 
-type Slot pa s = H.Slot Query' (Message pa) s
+type Slot pa s = H.Slot Query' (Output pa) s
 
 type ExtraStateRow item pa cs m =
   ( props :: Props item pa cs m
@@ -65,33 +74,39 @@ render state =
 component
   :: forall item pa cs m
    . MonadAff m
-  => H.Component HH.HTML Query' (Props item pa cs m) (Message pa) m
+  => H.Component HH.HTML Query' (Props item pa cs m) (Output pa) m
 component = H.mkComponent
   { initialState
   , render
-  , eval: H.mkEval $ SC.defaultEval
-      -- { handleAction = SC.handleAction handleAction handleSelectMessage
-      { handleAction = SC.handleAction handleAction H.raise
-      -- , handleQuery = SC.handleQuery H.raise
-      -- , handleQuery = SC.handleQuery ?h
-      , receive = Just <<< SC.ExtraAction <<< Receive
+  , eval: SC.mkEval $ SC.defaultEval'
+      { receive = Just <<< SC.ExtraAction <<< Receive
+      , handleAction = handleAction
+      , handleMessage = handleSelectMessage
       }
+      -- { handleAction = SC.handleAction handleAction handleSelectMessage
+      -- { handleAction = SC.handleAction handleAction handleSelectMessage
+      -- , handleQuery = SC.handleQuery H.raise
+      -- , handleQuery = SC.handleQuery handleSelectMessage
+      -- , handleQuery = SC.handleQuery (const $ pure unit)
+      -- , receive = Just <<< SC.ExtraAction <<< Receive
+      -- }
   }
 
 handleAction :: forall item pa cs m. ExtraAction item pa cs m -> DSL item pa cs m Unit
 handleAction = case _ of
   Receive props -> H.modify_ $ _ { props = props }
   Raise pa -> do
+    -- pure unit
     H.raise $ Emit pa
 
 -- handleSelectMessage :: forall item pa pa' cs m. SC.Message pa' -> DSL item pa cs m Unit
-handleSelectMessage :: forall item pa cs m. SC.Message pa -> DSL item pa cs m Unit
+-- handleSelectMessage :: forall item pa cs m. SC.Message -> DSL item pa cs m Unit
 -- handleSelectMessage = H.raise
 handleSelectMessage = case _ of
-  Emit _ -> pure unit
-  Selected v -> H.raise $ Selected v
-  InputValueChanged v -> H.raise $ InputValueChanged v
-  VisibilityChanged v -> H.raise $ VisibilityChanged v
+  -- Emit _ -> pure unit
+  SC.Selected v -> H.raise $ Selected v
+  SC.InputValueChanged v -> H.raise $ InputValueChanged v
+  SC.VisibilityChanged v -> H.raise $ VisibilityChanged v
 
 -- | Following are helpers so that you can query from the parent component.
 raise :: forall item pa cs m. pa -> Action item pa cs m

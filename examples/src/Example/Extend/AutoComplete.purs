@@ -16,7 +16,7 @@ import NSelect.Component as SC
 
 type Message = Void
 
-type Query = SC.Query Void
+type Query = SC.Query
 
 type Action
   = SC.Action Void
@@ -97,7 +97,7 @@ handleAction :: Void -> H.HalogenM State Action () Message Aff Unit
 handleAction = case _ of
   _ -> pure unit
 
-handleMessage :: SC.Message Void -> DSL Unit
+handleMessage :: SC.Message -> DSL Unit
 handleMessage = case _ of
   SC.Selected index -> do
     state <- H.get
@@ -109,4 +109,4 @@ handleMessage = case _ of
       , filteredItems = Array.filter (\s -> String.contains (String.Pattern value) s) state.items
       }
   SC.VisibilityChanged _ -> pure unit
-  SC.Emit _ -> pure unit
+  -- SC.Emit _ -> pure unit

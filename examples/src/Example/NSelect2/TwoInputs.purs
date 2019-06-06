@@ -9,7 +9,6 @@ import Data.Foldable (for_)
 import Data.Maybe (Maybe(..))
 import Data.Monoid as Monoid
 import Data.Symbol (SProxy(..))
-import Debug.Trace (traceM)
 import Effect.Aff (Aff)
 import Halogen as H
 import Halogen.HTML as HH
@@ -22,7 +21,7 @@ type Query = Const Void
 
 data Action
   = OnKeyDownInput DropdownSlot KE.KeyboardEvent
-  | HandleDropdown DropdownSlot (Select.Message Action)
+  | HandleDropdown DropdownSlot (Select.Output Action)
 
 type State =
   { from :: String
@@ -68,10 +67,9 @@ renderSelect state slot st =
   ( Select.setRootProps []
   ) $ join
   [ pure $ HH.input
-    -- ( Select.setInputProps'
-    --   { onKeyDown: \e -> OnKeyDownInput slot e
-    --   }
-    ( Select.setInputProps
+    ( Select.setInputProps'
+      { onKeyDown: \e -> Select.Raise $ OnKeyDownInput slot e
+      }
       [ HP.value value
       ]
     )
@@ -136,7 +134,6 @@ handleAction (OnKeyDownInput slot kbEvent) = do
     _ -> pure unit
 handleAction (HandleDropdown slot msg) = case msg of
   Select.Selected index -> do
-    traceM "selected"
     state <- H.get
     for_ (Array.index state.items index) \item ->
       case slot of

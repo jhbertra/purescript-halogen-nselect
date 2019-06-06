@@ -1,11 +1,13 @@
 module Example.Prelude
-  ( class_
+  ( module Prelude
+  , module Debug.Trace
+  , class_
   , style
-  , module Prelude
   ) where
 
 import Prelude
 
+import Debug.Trace (traceM)
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 
