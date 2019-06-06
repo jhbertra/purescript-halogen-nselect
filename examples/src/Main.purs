@@ -11,6 +11,7 @@ import Example.ComponentInDropdown as ExpComponentInDropdown
 import Example.Autocomplete as ExpAutocomplete
 import Example.TwoInputs as ExpTwoInputs
 import Example.Extend.Autocomplete as ExtendAutocomplete
+import Example.NSelect2.Dropdown as ExpDropdown2
 import Foreign.Object as Object
 import Halogen.Aff as HA
 import Halogen.Storybook (Stories, runStorybook, proxy)
@@ -22,6 +23,7 @@ stories = Object.fromFoldable
   , Tuple "Autocomplete" $ proxy ExpAutocomplete.component
   , Tuple "Two inputs" $ proxy ExpTwoInputs.component
   , Tuple "Extend|Autocomplete" $ proxy ExtendAutocomplete.component
+  , Tuple "NSelect2|Dropdown" $ proxy ExpDropdown2.component
   ]
 
 main :: Effect Unit

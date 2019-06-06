@@ -5,6 +5,7 @@ import Prelude
 import Data.Array as Array
 import Data.Foldable (traverse_)
 import Data.Maybe (Maybe(..))
+import Debug.Trace (traceM)
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect)
 import Halogen as H
@@ -63,9 +64,11 @@ data Action a
 
 defaultEval
   :: forall x q s a sl i o m
-   . HC.EvalSpec (State x s) q (Action a) sl i o m
+   . MonadAff m
+  => HC.EvalSpec (State x s) q (Action a) sl i o m
 defaultEval = H.defaultEval
   { initialize = Just Init
+  , handleAction = handleAction (const $ pure unit) (const $ pure unit)
   }
 
 type DSL item state action slot o m =
@@ -133,6 +136,7 @@ handleAction handleExtra handleMessage = case _ of
     H.modify_ $ _ { select { clickedInside = false } }
 
   OnMouseDownToggle -> do
+    traceM "toggle"
     { select } <- H.get
     handleVisibilityChange $ not select.isOpen
 
