@@ -12,21 +12,21 @@ import Effect.Aff (Aff)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
-import NSelect.Component as Select
+import NSelect.Component as SC
 
 type Message = Void
 
-type Query = Const Void
+type Query = SC.Query Void
 
 type Action
-  = Select.Action Void
+  = SC.Action Void
 
 type ExtraStateRow =
   ( value :: String
   , filteredItems :: Array String
   )
 
-type State = Select.State String ExtraStateRow
+type State = SC.State String ExtraStateRow
 
 type HTML = H.ComponentHTML Action () Aff
 
@@ -47,7 +47,7 @@ items =
 initialState :: State
 initialState =
   { value: ""
-  , select: Select.initialState
+  , select: SC.initialState
   , items
   , filteredItems: items
   }
@@ -55,10 +55,10 @@ initialState =
 render :: State -> HTML
 render state =
   HH.div
-  ( Select.setRootProps []
+  ( SC.setRootProps []
   ) $ join
   [ pure $ HH.input
-    ( Select.setInputProps
+    ( SC.setInputProps
       [ style "width: 20rem"
       , HP.value state.value
       ]
@@ -67,13 +67,13 @@ render state =
     [ class_ "Dropdown"
     ]
     [ HH.ul
-      ( Select.setMenuProps
+      ( SC.setMenuProps
         [ class_ "overflow-y-auto"
         , style "max-height: 10rem;"
         ]
       ) $ state.filteredItems # Array.mapWithIndex \index item ->
       HH.li
-      ( Select.setItemProps index
+      ( SC.setItemProps index
         [ class_ $ "py-1 px-3 cursor-pointer" <>
             Monoid.guard (index == state.select.highlightedIndex) " bg-blue-300"
         ]
@@ -86,8 +86,8 @@ component :: H.Component HH.HTML Query Unit Message Aff
 component = H.mkComponent
   { initialState: const initialState
   , render
-  , eval: H.mkEval $ Select.defaultEval
-      { handleAction = Select.handleAction handleAction handleMessage
+  , eval: H.mkEval $ SC.defaultEval
+      { handleAction = SC.handleAction handleAction handleMessage
       }
   }
 
@@ -97,14 +97,16 @@ handleAction :: Void -> H.HalogenM State Action () Message Aff Unit
 handleAction = case _ of
   _ -> pure unit
 
-handleMessage :: Select.Message -> DSL Unit
+handleMessage :: SC.Message Void -> DSL Unit
 handleMessage = case _ of
-  Select.Selected index -> do
+  SC.Selected index -> do
     state <- H.get
     for_ (Array.index state.filteredItems index) \item ->
       H.modify_ $ _ { value = item, select { isOpen = false } }
-  Select.InputValueChanged value -> do
+  SC.InputValueChanged value -> do
     H.modify_ $ \state -> state
       { value = value
       , filteredItems = Array.filter (\s -> String.contains (String.Pattern value) s) state.items
       }
+  SC.VisibilityChanged _ -> pure unit
+  SC.Emit _ -> pure unit

@@ -5,7 +5,7 @@ import Prelude
 import Data.Array as Array
 import Data.Foldable (traverse_)
 import Data.Maybe (Maybe(..))
-import Debug.Trace (traceM)
+import Effect.Aff as Aff
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect)
 import Halogen as H
@@ -26,6 +26,15 @@ import Web.UIEvent.KeyboardEvent as KE
 import Web.UIEvent.MouseEvent as ME
 import Web.UIEvent.MouseEvent.EventTypes as ET
 
+data Query q a
+  = Open a
+  | Close a
+  | Focus a
+  | Highlight Int a
+  | Select a
+  -- | GetState (State -> a)
+  | ExtraQuery q
+
 type State item r =
   { select :: SelectStateRow
   , items :: Array item
@@ -45,9 +54,11 @@ initialState =
   , highlightedIndex: 0
   }
 
-data Message
+data Message pa
   = Selected Int
   | InputValueChanged String
+  | VisibilityChanged Boolean
+  | Emit pa
 
 data Action a
   = Init
@@ -58,6 +69,7 @@ data Action a
   | ExtraAction a
   | OnFocusInput
   | OnKeyDownInput KE.KeyboardEvent
+  | OnKeyDownInput' (KeyDownHandler a) KE.KeyboardEvent
   | OnClickItem Int
   | OnMouseEnterItem Int
   | OnValueInput String
@@ -65,10 +77,11 @@ data Action a
 defaultEval
   :: forall x q s a sl i o m
    . MonadAff m
-  => HC.EvalSpec (State x s) q (Action a) sl i o m
+  => HC.EvalSpec (State x s) (Query q) (Action a) sl i o m
 defaultEval = H.defaultEval
   { initialize = Just Init
   , handleAction = handleAction (const $ pure unit) (const $ pure unit)
+  , handleQuery = handleQuery
   }
 
 type DSL item state action slot o m =
@@ -114,7 +127,7 @@ handleAction
   :: forall x s a sl o m
    . MonadAff m
   => (a -> DSL x s a sl o m Unit)
-  -> (Message -> DSL x s a sl o m Unit)
+  -> (Message a -> DSL x s a sl o m Unit)
   -> Action a
   -> DSL x s a sl o m Unit
 handleAction handleExtra handleMessage = case _ of
@@ -136,7 +149,6 @@ handleAction handleExtra handleMessage = case _ of
     H.modify_ $ _ { select { clickedInside = false } }
 
   OnMouseDownToggle -> do
-    traceM "toggle"
     { select } <- H.get
     handleVisibilityChange $ not select.isOpen
 
@@ -160,6 +172,10 @@ handleAction handleExtra handleMessage = case _ of
           handleHighlightedIndexChange nextIndex
       "Enter" -> H.gets _.select.highlightedIndex >>= handleMessage <<< Selected
       _ -> pure unit
+
+  OnKeyDownInput' parentOnKeyDown kbEvent -> do
+    pure unit
+    -- handleAction (OnKeyDownInput kbEvent)
 
   OnClickItem index -> do
     handleMessage $ Selected index
@@ -235,6 +251,20 @@ setInputProps props = props <> sharedInputProps <>
   [ HE.onKeyDown $ Just <<< OnKeyDownInput
   ]
 
+type KeyDownHandler pa = KE.KeyboardEvent -> pa
+
+-- | setInputProps' does everything setInputProps does, but also pass the
+-- | keyboardEvent back to the parent component, so the parent can handle more
+-- | key bindings like Tab.
+setInputProps'
+  :: forall pa r
+   . { onKeyDown :: KeyDownHandler pa }
+  -> Array (HH.IProp (InputProps r) (Action pa))
+  -> Array (HH.IProp (InputProps r) (Action pa))
+setInputProps' parentHandlers props = props <> sharedInputProps <>
+  [ HE.onKeyDown $ Just <<< OnKeyDownInput' parentHandlers.onKeyDown
+  ]
+
 menuRef :: H.RefLabel
 menuRef = H.RefLabel "__nselect_menu"
 
@@ -264,3 +294,38 @@ setItemProps index props = props <>
   , HE.onClick $ Just <<< const (OnClickItem index)
   , HE.onMouseEnter $ Just <<< const (OnMouseEnterItem index)
   ]
+
+handleQuery
+  :: forall item s pq pa cs o m a
+   . MonadAff m
+  => Query pq a
+  -> DSL item s pa cs o m (Maybe a)
+handleQuery = case _ of
+  Open n -> do
+    handleVisibilityChange true
+    pure $ Just n
+
+  Close n -> do
+    handleVisibilityChange false
+    pure $ Just n
+
+  Focus n -> do
+    H.getHTMLElementRef inputRef >>= traverse_ \el -> do
+      H.liftAff $ Aff.delay $ Aff.Milliseconds 0.0
+      H.liftEffect $ HTMLElement.focus el
+    pure $ Just n
+
+  Highlight index n -> do
+    handleHighlightedIndexChange index
+    pure $ Just n
+
+  Select n -> do
+    -- H.gets _.highlightedIndex >>= handleMessage <<< Selected
+    pure $ Just n
+
+  ExtraQuery n -> do
+    pure Nothing
+
+  -- GetState q -> do
+  --   state <- H.get
+  --   pure $ Just $ q $ innerStateToState state
