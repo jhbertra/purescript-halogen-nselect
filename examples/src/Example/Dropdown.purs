@@ -17,7 +17,7 @@ type Query = Const Void
 
 data Action
   = OnInput String
-  | HandleDropdown (Select.Output Action)
+  | HandleDropdown (Select.Message Action)
 
 type State =
   { value :: String

@@ -2,7 +2,7 @@ module NSelect
   ( module NSelect.Component
   , ExtraAction
   , Query'
-  , Output(..)
+  , Message(..)
   , Slot
   , Action
   , HTML
@@ -24,7 +24,7 @@ type Props item pa cs m =
   , items :: Array item
   }
 
-data Output pa
+data Message pa
   = Selected Int
   | InputValueChanged String
   | VisibilityChanged Boolean
@@ -42,9 +42,9 @@ type Action item pa cs m
 type HTML item pa cs m = H.ComponentHTML (Action item pa cs m) cs m
 
 type DSL item pa cs m =
-  H.HalogenM (InnerState item pa cs m) (Action item pa cs m) cs (Output pa) m
+  H.HalogenM (InnerState item pa cs m) (Action item pa cs m) cs (Message pa) m
 
-type Slot pa s = H.Slot Query' (Output pa) s
+type Slot pa s = H.Slot Query' (Message pa) s
 
 type ExtraStateRow item pa cs m =
   ( props :: Props item pa cs m
@@ -66,7 +66,7 @@ render state =
 component
   :: forall item pa cs m
    . MonadAff m
-  => H.Component HH.HTML Query' (Props item pa cs m) (Output pa) m
+  => H.Component HH.HTML Query' (Props item pa cs m) (Message pa) m
 component = H.mkComponent
   { initialState
   , render

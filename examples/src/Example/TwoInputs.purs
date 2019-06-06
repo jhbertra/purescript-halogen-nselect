@@ -21,7 +21,7 @@ type Query = Const Void
 
 data Action
   = OnKeyDownInput DropdownSlot KE.KeyboardEvent
-  | HandleDropdown DropdownSlot (Select.Output Action)
+  | HandleDropdown DropdownSlot (Select.Message Action)
 
 type State =
   { from :: String

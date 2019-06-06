@@ -15,7 +15,7 @@ import NSelect as Select
 type Query = Const Void
 
 data Action
-  = HandleDropdown (Select.Output Action)
+  = HandleDropdown (Select.Message Action)
   | HandleChild Child.Message
 
 type State =
