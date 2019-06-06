@@ -32,27 +32,36 @@ data Query q a
   | Focus a
   | Highlight Int a
   | Select a
-  -- | GetState (State -> a)
+  | GetState (RenderState -> a)
   | ExtraQuery q
 
 type State item r =
-  { select :: SelectStateRow
+  { select :: SelectState
   , items :: Array item
   | r
   }
 
-type SelectStateRow =
+type SelectState =
   { isOpen :: Boolean
   , clickedInside :: Boolean
   , highlightedIndex :: Int
   }
 
-initialState :: SelectStateRow
+type RenderState =
+  { isOpen :: Boolean
+  , highlightedIndex :: Int
+  }
+
+initialState :: SelectState
 initialState =
   { isOpen: false
   , clickedInside: false
   , highlightedIndex: 0
   }
+
+selectStateToRenderState :: SelectState -> RenderState
+selectStateToRenderState { isOpen, highlightedIndex } =
+  { isOpen, highlightedIndex }
 
 data Message pa
   = Selected Int
@@ -73,16 +82,6 @@ data Action a
   | OnClickItem Int
   | OnMouseEnterItem Int
   | OnValueInput String
-
-defaultEval
-  :: forall x q s a sl i o m
-   . MonadAff m
-  => HC.EvalSpec (State x s) (Query q) (Action a) sl i o m
-defaultEval = H.defaultEval
-  { initialize = Just Init
-  , handleAction = handleAction (const $ pure unit) (const $ pure unit)
-  , handleQuery = handleQuery
-  }
 
 type DSL item state action slot o m =
   H.HalogenM (State item state) (Action action) slot o m
@@ -122,76 +121,6 @@ scrollIntoViewIfNeeded index = do
           else pure unit
   where
   selector = QuerySelector $ "[data-nselect-item='" <> show index <> "']"
-
-handleAction
-  :: forall x s a sl o m
-   . MonadAff m
-  => (a -> DSL x s a sl o m Unit)
-  -> (Message a -> DSL x s a sl o m Unit)
-  -> Action a
-  -> DSL x s a sl o m Unit
-handleAction handleExtra handleMessage = case _ of
-  Init -> do
-    win <- H.liftEffect Web.window
-    void $ H.subscribe $
-      ES.eventListenerEventSource ET.mousedown (Window.toEventTarget win)
-        (const $ Just OnWindowMouseDown)
-
-  OnWindowMouseDown -> do
-    { select } <- H.get
-    when (not select.clickedInside && select.isOpen) $ do
-      handleVisibilityChange false
-
-  OnMouseDownRoot -> do
-    H.modify_ $ _ { select { clickedInside = true } }
-
-  OnMouseUpRoot -> do
-    H.modify_ $ _ { select { clickedInside = false } }
-
-  OnMouseDownToggle -> do
-    { select } <- H.get
-    handleVisibilityChange $ not select.isOpen
-
-  OnFocusInput -> do
-    handleVisibilityChange true
-
-  OnKeyDownInput kbEvent -> do
-    let event = KE.toEvent kbEvent
-    case KE.key kbEvent of
-      "ArrowUp" -> do
-        H.liftEffect $ Event.preventDefault event
-        s <- H.get
-        let nextIndex = max 0 (s.select.highlightedIndex - 1)
-        when (nextIndex /= s.select.highlightedIndex) $
-          handleHighlightedIndexChange nextIndex
-      "ArrowDown" -> do
-        H.liftEffect $ Event.preventDefault event
-        s <- H.get
-        let nextIndex = min (Array.length s.items - 1) (s.select.highlightedIndex + 1)
-        when (nextIndex /= s.select.highlightedIndex) $
-          handleHighlightedIndexChange nextIndex
-      "Enter" -> H.gets _.select.highlightedIndex >>= handleMessage <<< Selected
-      _ -> pure unit
-
-  OnKeyDownInput' parentOnKeyDown kbEvent -> do
-    pure unit
-    -- handleAction (OnKeyDownInput kbEvent)
-
-  OnClickItem index -> do
-    handleMessage $ Selected index
-
-  OnMouseEnterItem index -> do
-    H.modify_ $ _
-      { select
-          { highlightedIndex = index }
-      }
-
-  OnValueInput value -> do
-    handleHighlightedIndexChange 0
-    handleMessage $ InputValueChanged value
-
-  ExtraAction action -> do
-    handleExtra action
 
 
 type RootProps r =
@@ -295,12 +224,93 @@ setItemProps index props = props <>
   , HE.onMouseEnter $ Just <<< const (OnMouseEnterItem index)
   ]
 
-handleQuery
-  :: forall item s pq pa cs o m a
+defaultEval
+  :: forall x q s a sl i o m
    . MonadAff m
-  => Query pq a
-  -> DSL item s pa cs o m (Maybe a)
-handleQuery = case _ of
+  => HC.EvalSpec (State x s) (Query q) (Action a) sl i o m
+defaultEval = H.defaultEval
+  { initialize = Just Init
+  , handleAction = handleAction (const $ pure unit) (const $ pure unit)
+  , handleQuery = handleQuery (const $ pure unit)
+  }
+
+handleAction
+  :: forall item s a pa cs o m
+   . MonadAff m
+  => (a -> DSL item s a cs o m Unit)
+  -> (Message pa -> DSL item s a cs o m Unit)
+  -> Action a
+  -> DSL item s a cs o m Unit
+handleAction handleExtra handleMessage = case _ of
+  Init -> do
+    win <- H.liftEffect Web.window
+    void $ H.subscribe $
+      ES.eventListenerEventSource ET.mousedown (Window.toEventTarget win)
+        (const $ Just OnWindowMouseDown)
+
+  OnWindowMouseDown -> do
+    { select } <- H.get
+    when (not select.clickedInside && select.isOpen) $ do
+      handleVisibilityChange false
+
+  OnMouseDownRoot -> do
+    H.modify_ $ _ { select { clickedInside = true } }
+
+  OnMouseUpRoot -> do
+    H.modify_ $ _ { select { clickedInside = false } }
+
+  OnMouseDownToggle -> do
+    { select } <- H.get
+    handleVisibilityChange $ not select.isOpen
+
+  OnFocusInput -> do
+    handleVisibilityChange true
+
+  OnKeyDownInput kbEvent -> do
+    let event = KE.toEvent kbEvent
+    case KE.key kbEvent of
+      "ArrowUp" -> do
+        H.liftEffect $ Event.preventDefault event
+        s <- H.get
+        let nextIndex = max 0 (s.select.highlightedIndex - 1)
+        when (nextIndex /= s.select.highlightedIndex) $
+          handleHighlightedIndexChange nextIndex
+      "ArrowDown" -> do
+        H.liftEffect $ Event.preventDefault event
+        s <- H.get
+        let nextIndex = min (Array.length s.items - 1) (s.select.highlightedIndex + 1)
+        when (nextIndex /= s.select.highlightedIndex) $
+          handleHighlightedIndexChange nextIndex
+      "Enter" -> H.gets _.select.highlightedIndex >>= handleMessage <<< Selected
+      _ -> pure unit
+
+  OnKeyDownInput' parentOnKeyDown kbEvent -> do
+    pure unit
+    -- handleAction (OnKeyDownInput kbEvent)
+
+  OnClickItem index -> do
+    handleMessage $ Selected index
+
+  OnMouseEnterItem index -> do
+    H.modify_ $ _
+      { select
+          { highlightedIndex = index }
+      }
+
+  OnValueInput value -> do
+    handleHighlightedIndexChange 0
+    handleMessage $ InputValueChanged value
+
+  ExtraAction action -> do
+    handleExtra action
+
+handleQuery
+  :: forall item s a pq pa cs o m u
+   . MonadAff m
+  => (Message pa -> DSL item s a cs o m Unit)
+  -> Query pq u
+  -> DSL item s pa cs o m (Maybe u)
+handleQuery handleMessage = case _ of
   Open n -> do
     handleVisibilityChange true
     pure $ Just n
@@ -326,6 +336,6 @@ handleQuery = case _ of
   ExtraQuery n -> do
     pure Nothing
 
-  -- GetState q -> do
-  --   state <- H.get
-  --   pure $ Just $ q $ innerStateToState state
+  GetState q -> do
+    state <- H.get
+    pure $ Just $ q $ selectStateToRenderState state.select

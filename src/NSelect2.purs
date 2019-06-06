@@ -17,21 +17,21 @@ import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Halogen.HTML as HH
 import NSelect.Component (Query(..), Message(..), setRootProps, setToggleProps, setInputProps, setInputProps', setMenuProps, setItemProps)
-import NSelect.Component as NC
+import NSelect.Component as SC
 
 type Props item pa cs m =
   { render :: State -> HTML item pa cs m
   , items :: Array item
   }
 
-type Query' = NC.Query Void
+type Query' = SC.Query Void
 
 data ExtraAction item pa cs m
   = Receive (Props item pa cs m)
   | Raise pa
 
 type Action item pa cs m
-  = NC.Action (ExtraAction item pa cs m)
+  = SC.Action (ExtraAction item pa cs m)
 
 type HTML item pa cs m = H.ComponentHTML (Action item pa cs m) cs m
 
@@ -44,29 +44,23 @@ type ExtraStateRow item pa cs m =
   ( props :: Props item pa cs m
   )
 
-type InnerState item pa cs m = NC.State item (ExtraStateRow item pa cs m)
+type InnerState item pa cs m = SC.State item (ExtraStateRow item pa cs m)
 
 type State =
   { isOpen :: Boolean
   , highlightedIndex :: Int
   }
 
-innerStateToState :: forall item pa cs m. InnerState item pa cs m -> State
-innerStateToState { select: { isOpen, highlightedIndex } } =
-  { isOpen
-  , highlightedIndex
-  }
-
 initialState :: forall item pa cs m. Props item pa cs m -> InnerState item pa cs m
 initialState props =
-  { select: NC.initialState
+  { select: SC.initialState
   , items: props.items
   , props
   }
 
 render :: forall item pa cs m. InnerState item pa cs m -> HTML item pa cs m
 render state =
-  state.props.render $ innerStateToState state
+  state.props.render $ SC.selectStateToRenderState state.select
 
 component
   :: forall item pa cs m
@@ -75,9 +69,12 @@ component
 component = H.mkComponent
   { initialState
   , render
-  , eval: H.mkEval $ NC.defaultEval
-      { handleAction = NC.handleAction handleAction handleSelectMessage
-      , receive = Just <<< NC.ExtraAction <<< Receive
+  , eval: H.mkEval $ SC.defaultEval
+      -- { handleAction = SC.handleAction handleAction handleSelectMessage
+      { handleAction = SC.handleAction handleAction H.raise
+      -- , handleQuery = SC.handleQuery H.raise
+      -- , handleQuery = SC.handleQuery ?h
+      , receive = Just <<< SC.ExtraAction <<< Receive
       }
   }
 
@@ -87,7 +84,9 @@ handleAction = case _ of
   Raise pa -> do
     H.raise $ Emit pa
 
-handleSelectMessage :: forall item pa pa' cs m. NC.Message pa' -> DSL item pa cs m Unit
+-- handleSelectMessage :: forall item pa pa' cs m. SC.Message pa' -> DSL item pa cs m Unit
+handleSelectMessage :: forall item pa cs m. SC.Message pa -> DSL item pa cs m Unit
+-- handleSelectMessage = H.raise
 handleSelectMessage = case _ of
   Emit _ -> pure unit
   Selected v -> H.raise $ Selected v
@@ -96,4 +95,4 @@ handleSelectMessage = case _ of
 
 -- | Following are helpers so that you can query from the parent component.
 raise :: forall item pa cs m. pa -> Action item pa cs m
-raise = NC.ExtraAction <<< Raise
+raise = SC.ExtraAction <<< Raise
