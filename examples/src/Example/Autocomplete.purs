@@ -19,7 +19,7 @@ import NSelect as Select
 type Query = Const Void
 
 data Action
-  = HandleDropdown (Select.Message Action)
+  = HandleDropdown (Select.Output Action)
 
 type State =
   { value :: String
@@ -56,7 +56,7 @@ initialState =
   , filteredItems: items
   }
 
-renderSelect :: State -> Select.State -> Select.HTML Action () Aff
+renderSelect :: State -> Select.State -> Select.HTML String Action () Aff
 renderSelect state st =
   HH.div
   ( Select.setRootProps []
@@ -94,7 +94,7 @@ render state =
     [ HH.text "Use ArrowUp/ArrowDown to change selection, Enter to confirm."]
   , HH.slot _dropdown unit Select.component
     { render: renderSelect state
-    , itemCount: Array.length state.filteredItems
+    , items: state.filteredItems
     } $ Just <<< HandleDropdown
   ]
 
@@ -112,7 +112,7 @@ handleAction (HandleDropdown msg) = case msg of
     state <- H.get
     for_ (Array.index state.filteredItems index) \item ->
       H.modify_ $ _ { value = item }
-    void $ H.query _dropdown unit Select.close
+    void $ H.query _dropdown unit $ H.tell Select.Close
   Select.InputValueChanged value -> do
     H.modify_ $ \state -> state
       { value = value

@@ -15,7 +15,7 @@ import NSelect as Select
 type Query = Const Void
 
 data Action
-  = HandleDropdown (Select.Message Action)
+  = HandleDropdown (Select.Output Action)
   | HandleChild Child.Message
 
 type State =
@@ -40,7 +40,7 @@ initialState =
   { value: ""
   }
 
-renderSelect :: State -> Select.State -> Select.HTML Action SelectSlots Aff
+renderSelect :: State -> Select.State -> Select.HTML String Action SelectSlots Aff
 renderSelect state st =
   HH.div
   ( Select.setRootProps
@@ -66,7 +66,7 @@ render state =
     [ HH.text "Render another component inside dropdown."]
   , HH.slot _dropdown unit Select.component
     { render: renderSelect state
-    , itemCount: 0
+    , items: []
     } $ Just <<< HandleDropdown
   , HH.div_
     [ HH.text $ "You typed: " <> state.value

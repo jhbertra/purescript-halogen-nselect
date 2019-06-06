@@ -25,7 +25,7 @@ type ExtraStateRow =
   , filteredItems :: Array String
   )
 
-type State = SC.State String ExtraStateRow
+type State = SC.InnerState String ExtraStateRow
 
 type HTML = H.ComponentHTML Action () Aff
 

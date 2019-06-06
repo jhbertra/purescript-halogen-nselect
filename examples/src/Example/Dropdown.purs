@@ -17,7 +17,7 @@ type Query = Const Void
 
 data Action
   = OnInput String
-  | HandleDropdown (Select.Message Action)
+  | HandleDropdown (Select.Output Action)
 
 type State =
   { value :: String
@@ -36,7 +36,7 @@ initialState =
   { value: ""
   }
 
-renderSelect :: State -> Select.State -> Select.HTML Action () Aff
+renderSelect :: State -> Select.State -> Select.HTML String Action () Aff
 renderSelect state st =
   HH.div
   ( Select.setRootProps [ class_ "inline-block"]
@@ -65,7 +65,7 @@ render state =
     [ HH.text "Trigger parent action from dropdown."]
   , HH.slot _dropdown unit Select.component
     { render: renderSelect state
-    , itemCount: 0
+    , items: []
     } $ Just <<< HandleDropdown
   ]
 

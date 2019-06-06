@@ -31,9 +31,9 @@ data Query a
   | Focus a
   | Highlight Int a
   | Select a
-  | GetState (RenderState -> a)
+  | GetState (State -> a)
 
-type State item r =
+type InnerState item r =
   { select :: SelectState
   , items :: Array item
   | r
@@ -45,7 +45,7 @@ type SelectState =
   , highlightedIndex :: Int
   }
 
-type RenderState =
+type State =
   { isOpen :: Boolean
   , highlightedIndex :: Int
   }
@@ -57,8 +57,8 @@ initialState =
   , highlightedIndex: 0
   }
 
-selectStateToRenderState :: SelectState -> RenderState
-selectStateToRenderState { isOpen, highlightedIndex } =
+selectStateToState :: SelectState -> State
+selectStateToState { isOpen, highlightedIndex } =
   { isOpen, highlightedIndex }
 
 data Message
@@ -81,7 +81,7 @@ data Action a
   | OnValueInput String
 
 type DSL item state action slot o m =
-  H.HalogenM (State item state) (Action action) slot o m
+  H.HalogenM (InnerState item state) (Action action) slot o m
 
 handleVisibilityChange :: forall x s a sl o m. Boolean -> DSL x s a sl o m Unit
 handleVisibilityChange isOpen = do
@@ -348,4 +348,4 @@ handleQuery spec = case _ of
 
   GetState q -> do
     state <- H.get
-    pure $ Just $ q $ selectStateToRenderState state.select
+    pure $ Just $ q $ selectStateToState state.select

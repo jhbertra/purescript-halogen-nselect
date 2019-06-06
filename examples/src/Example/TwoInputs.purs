@@ -21,7 +21,7 @@ type Query = Const Void
 
 data Action
   = OnKeyDownInput DropdownSlot KE.KeyboardEvent
-  | HandleDropdown DropdownSlot (Select.Message Action)
+  | HandleDropdown DropdownSlot (Select.Output Action)
 
 type State =
   { from :: String
@@ -61,14 +61,14 @@ renderSelect
   :: State
   -> DropdownSlot
   -> Select.State
-  -> Select.HTML Action () Aff
+  -> Select.HTML String Action () Aff
 renderSelect state slot st =
   HH.div
   ( Select.setRootProps []
   ) $ join
   [ pure $ HH.input
     ( Select.setInputProps'
-      { onKeyDown: \e -> OnKeyDownInput slot e
+      { onKeyDown: \e -> Select.raise $ OnKeyDownInput slot e
       }
       [ HP.value value
       ]
@@ -103,14 +103,14 @@ render state =
     [ class_ "flex" ]
     [ HH.slot _dropdown DropdownFrom Select.component
       { render: renderSelect state DropdownFrom
-      , itemCount: Array.length state.items
+      , items: state.items
       } $ Just <<< HandleDropdown DropdownFrom
     , HH.span
       [ class_ "mx-4" ]
       [ HH.text "-" ]
     , HH.slot _dropdown DropdownTo Select.component
       { render: renderSelect state DropdownTo
-      , itemCount: Array.length state.items
+      , items: state.items
       } $ Just <<< HandleDropdown DropdownTo
     ]
   ]
@@ -129,7 +129,7 @@ handleAction (OnKeyDownInput slot kbEvent) = do
   case KE.key kbEvent of
     "Tab" -> do
       H.liftEffect $ Event.preventDefault event
-      void $ H.query _dropdown slot Select.select
+      void $ H.query _dropdown slot $ H.tell Select.Select
     _ -> pure unit
 handleAction (HandleDropdown slot msg) = case msg of
   Select.Selected index -> do
@@ -138,9 +138,9 @@ handleAction (HandleDropdown slot msg) = case msg of
       case slot of
         DropdownFrom -> H.modify_ $ _ { from = item }
         DropdownTo -> H.modify_ $ _ { to = item }
-    void $ H.query _dropdown slot Select.close
+    void $ H.query _dropdown slot $ H.tell Select.Close
     when (slot == DropdownFrom) $ do
-      void $ H.query _dropdown DropdownTo Select.focus
+      void $ H.query _dropdown DropdownTo $ H.tell Select.Focus
   Select.InputValueChanged value -> do
     case slot of
       DropdownFrom -> H.modify_ $ _ { from = value }
