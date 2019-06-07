@@ -94,7 +94,7 @@ render state =
     [ HH.text "Use ArrowUp/ArrowDown to change selection, Enter to confirm."]
   , HH.slot _dropdown unit Select.component
     { render: renderSelect state
-    , itemCount: 0
+    , itemCount: Array.length state.filteredItems
     } $ Just <<< HandleDropdown
   ]
 

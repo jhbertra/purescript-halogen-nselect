@@ -64,12 +64,15 @@ render state =
   [ HH.p
     [ class_ "mb-3"]
     [ HH.text "Render another component inside dropdown."]
-  , HH.slot _dropdown unit Select.component
-    { render: renderSelect state
-    , itemCount: 0
-    } $ Just <<< HandleDropdown
-  , HH.div_
-    [ HH.text $ "You typed: " <> state.value
+  , HH.div
+    [ class_ "flex items-center" ]
+    [ HH.slot _dropdown unit Select.component
+      { render: renderSelect state
+      , itemCount: 0
+      } $ Just <<< HandleDropdown
+    , HH.div_
+      [ HH.text $ "You typed: " <> state.value
+      ]
     ]
   ]
 

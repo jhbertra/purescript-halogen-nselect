@@ -2,7 +2,6 @@ module NSelect.Component where
 
 import Prelude
 
-import Data.Array as Array
 import Data.Foldable (traverse_)
 import Data.Maybe (Maybe(..))
 import Effect.Aff as Aff
