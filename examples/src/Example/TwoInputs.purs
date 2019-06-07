@@ -61,7 +61,7 @@ renderSelect
   :: State
   -> DropdownSlot
   -> Select.State
-  -> Select.HTML String Action () Aff
+  -> Select.HTML Action () Aff
 renderSelect state slot st =
   HH.div
   ( Select.setRootProps []
@@ -103,14 +103,14 @@ render state =
     [ class_ "flex" ]
     [ HH.slot _dropdown DropdownFrom Select.component
       { render: renderSelect state DropdownFrom
-      , items: state.items
+      , itemCount: Array.length state.items
       } $ Just <<< HandleDropdown DropdownFrom
     , HH.span
       [ class_ "mx-4" ]
       [ HH.text "-" ]
     , HH.slot _dropdown DropdownTo Select.component
       { render: renderSelect state DropdownTo
-      , items: state.items
+      , itemCount: Array.length state.items
       } $ Just <<< HandleDropdown DropdownTo
     ]
   ]

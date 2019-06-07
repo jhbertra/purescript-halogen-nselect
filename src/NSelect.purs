@@ -19,9 +19,9 @@ import Halogen.HTML as HH
 import NSelect.Component (Query(..), State, setRootProps, setToggleProps, setInputProps, setInputProps', setMenuProps, setItemProps)
 import NSelect.Component as SC
 
-type Props item pa cs m =
-  { render :: SC.State -> HTML item pa cs m
-  , items :: Array item
+type Props pa cs m =
+  { render :: SC.State -> HTML pa cs m
+  , itemCount :: Int
   }
 
 data Message pa
@@ -32,41 +32,41 @@ data Message pa
 
 type Query' = SC.Query
 
-data ExtraAction item pa cs m
-  = Receive (Props item pa cs m)
+data ExtraAction pa cs m
+  = Receive (Props pa cs m)
   | Raise pa
 
-type Action item pa cs m
-  = SC.Action (ExtraAction item pa cs m)
+type Action pa cs m
+  = SC.Action (ExtraAction pa cs m)
 
-type HTML item pa cs m = H.ComponentHTML (Action item pa cs m) cs m
+type HTML pa cs m = H.ComponentHTML (Action pa cs m) cs m
 
-type DSL item pa cs m =
-  H.HalogenM (InnerState item pa cs m) (Action item pa cs m) cs (Message pa) m
+type DSL pa cs m =
+  H.HalogenM (InnerState pa cs m) (Action pa cs m) cs (Message pa) m
 
 type Slot pa s = H.Slot Query' (Message pa) s
 
-type ExtraStateRow item pa cs m =
-  ( props :: Props item pa cs m
+type ExtraStateRow pa cs m =
+  ( props :: Props pa cs m
   )
 
-type InnerState item pa cs m = SC.InnerState item (ExtraStateRow item pa cs m)
+type InnerState pa cs m = SC.InnerState (ExtraStateRow pa cs m)
 
-initialState :: forall item pa cs m. Props item pa cs m -> InnerState item pa cs m
+initialState :: forall pa cs m. Props pa cs m -> InnerState pa cs m
 initialState props =
   { select: SC.initialState
-  , items: props.items
+  , getItemCount: \s -> s.props.itemCount
   , props
   }
 
-render :: forall item pa cs m. InnerState item pa cs m -> HTML item pa cs m
+render :: forall pa cs m. InnerState pa cs m -> HTML pa cs m
 render state =
   state.props.render $ SC.selectStateToState state.select
 
 component
-  :: forall item pa cs m
+  :: forall pa cs m
    . MonadAff m
-  => H.Component HH.HTML Query' (Props item pa cs m) (Message pa) m
+  => H.Component HH.HTML Query' (Props pa cs m) (Message pa) m
 component = H.mkComponent
   { initialState
   , render
@@ -77,17 +77,17 @@ component = H.mkComponent
       }
   }
 
-handleAction :: forall item pa cs m. ExtraAction item pa cs m -> DSL item pa cs m Unit
+handleAction :: forall pa cs m. ExtraAction pa cs m -> DSL pa cs m Unit
 handleAction = case _ of
   Receive props -> H.modify_ $ _ { props = props }
   Raise pa -> H.raise $ Emit pa
 
-handleSelectMessage :: forall item pa cs m. SC.Message -> DSL item pa cs m Unit
+handleSelectMessage :: forall pa cs m. SC.Message -> DSL pa cs m Unit
 handleSelectMessage = case _ of
   SC.Selected v -> H.raise $ Selected v
   SC.InputValueChanged v -> H.raise $ InputValueChanged v
   SC.VisibilityChanged v -> H.raise $ VisibilityChanged v
 
 -- | Following are helpers so that you can query from the parent component.
-raise :: forall item pa cs m. pa -> Action item pa cs m
+raise :: forall pa cs m. pa -> Action pa cs m
 raise = SC.ExtraAction <<< Raise

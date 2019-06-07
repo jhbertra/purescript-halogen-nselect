@@ -56,7 +56,7 @@ initialState =
   , filteredItems: items
   }
 
-renderSelect :: State -> Select.State -> Select.HTML String Action () Aff
+renderSelect :: State -> Select.State -> Select.HTML Action () Aff
 renderSelect state st =
   HH.div
   ( Select.setRootProps []
@@ -94,7 +94,7 @@ render state =
     [ HH.text "Use ArrowUp/ArrowDown to change selection, Enter to confirm."]
   , HH.slot _dropdown unit Select.component
     { render: renderSelect state
-    , items: state.filteredItems
+    , itemCount: 0
     } $ Just <<< HandleDropdown
   ]
 

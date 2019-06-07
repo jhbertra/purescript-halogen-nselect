@@ -22,10 +22,11 @@ type Action
 
 type ExtraStateRow =
   ( value :: String
+  , items :: Array String
   , filteredItems :: Array String
   )
 
-type State = SC.InnerState String ExtraStateRow
+type State = SC.InnerState ExtraStateRow
 
 type HTML = H.ComponentHTML Action () Aff
 
@@ -47,6 +48,7 @@ initialState :: State
 initialState =
   { value: ""
   , select: SC.initialState
+  , getItemCount: \s -> Array.length s.filteredItems
   , items
   , filteredItems: items
   }

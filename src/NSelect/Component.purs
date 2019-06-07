@@ -33,9 +33,9 @@ data Query a
   | Select a
   | GetState (State -> a)
 
-type InnerState item r =
+type InnerState r =
   { select :: SelectState
-  , items :: Array item
+  , getItemCount :: {|r} -> Int
   | r
   }
 
@@ -61,6 +61,9 @@ selectStateToState :: SelectState -> State
 selectStateToState { isOpen, highlightedIndex } =
   { isOpen, highlightedIndex }
 
+getExtraState :: forall r. InnerState r -> {|r}
+getExtraState = unsafeCoerce
+
 data Message
   = Selected Int
   | InputValueChanged String
@@ -80,27 +83,27 @@ data Action a
   | OnMouseEnterItem Int
   | OnValueInput String
 
-type DSL item state action slot o m =
-  H.HalogenM (InnerState item state) (Action action) slot o m
+type DSL state action slot o m =
+  H.HalogenM (InnerState state) (Action action) slot o m
 
-handleVisibilityChange :: forall x s a sl o m. Boolean -> DSL x s a sl o m Unit
+handleVisibilityChange :: forall s a sl o m. Boolean -> DSL s a sl o m Unit
 handleVisibilityChange isOpen = do
   H.modify_ $ _ { select { isOpen = isOpen } }
 
 handleHighlightedIndexChange
-  :: forall x s a sl o m
+  :: forall s a sl o m
    . MonadEffect m
   => Int
-  -> DSL x s a sl o m Unit
+  -> DSL s a sl o m Unit
 handleHighlightedIndexChange index = do
   H.modify_ $ _ { select { highlightedIndex = index } }
   scrollIntoViewIfNeeded index
 
 scrollIntoViewIfNeeded
-  :: forall item state act slot o m
+  :: forall state act slot o m
    . MonadEffect m
   => Int
-  -> DSL item state act slot o m Unit
+  -> DSL state act slot o m Unit
 scrollIntoViewIfNeeded index = do
   H.getHTMLElementRef menuRef >>= traverse_ \menu -> H.liftEffect $ do
     querySelector selector (HTMLElement.toParentNode menu) >>= traverse_ \itemEl -> do
@@ -221,14 +224,14 @@ setItemProps index props = props <>
   , HE.onMouseEnter $ Just <<< const (OnMouseEnterItem index)
   ]
 
-type Spec item s a cs i o m =
+type Spec s a cs i o m =
   { initialize :: Maybe (Action a)
   , receive :: i -> Maybe (Action a)
-  , handleAction :: a -> DSL item s a cs o m Unit
-  , handleMessage :: Message -> DSL item s a cs o m Unit
+  , handleAction :: a -> DSL s a cs o m Unit
+  , handleMessage :: Message -> DSL s a cs o m Unit
   }
 
-defaultEval :: forall item s a cs i o m. Spec item s a cs i o m
+defaultEval :: forall s a cs i o m. Spec s a cs i o m
 defaultEval =
   { initialize: Nothing
   , receive: const Nothing
@@ -237,11 +240,11 @@ defaultEval =
   }
 
 mkEval
-  :: forall item s a cs i o m n
+  :: forall s a cs i o m n
    . MonadAff m
-  => Spec item s a cs i o m
+  => Spec s a cs i o m
   -> H.HalogenQ Query (Action a) i n
-  -> DSL item s a cs o m n
+  -> DSL s a cs o m n
 mkEval spec =
   H.mkEval $ H.defaultEval
     { initialize = Just Init
@@ -251,10 +254,10 @@ mkEval spec =
     }
 
 handleAction
-  :: forall item s a cs i o m
+  :: forall s a cs i o m
    . MonadAff m
-  => Spec item s a cs i o m
-  -> Action a -> DSL item s a cs o m Unit
+  => Spec s a cs i o m
+  -> Action a -> DSL s a cs o m Unit
 handleAction spec = case _ of
   Init -> do
     win <- H.liftEffect Web.window
@@ -292,7 +295,7 @@ handleAction spec = case _ of
       "ArrowDown" -> do
         H.liftEffect $ Event.preventDefault event
         s <- H.get
-        let nextIndex = min (Array.length s.items - 1) (s.select.highlightedIndex + 1)
+        let nextIndex = min (s.getItemCount (getExtraState s) - 1) (s.select.highlightedIndex + 1)
         when (nextIndex /= s.select.highlightedIndex) $
           handleHighlightedIndexChange nextIndex
       "Enter" -> H.gets _.select.highlightedIndex >>= spec.handleMessage <<< Selected
@@ -319,10 +322,10 @@ handleAction spec = case _ of
     spec.handleAction action
 
 handleQuery
-  :: forall item s a cs i o m n
+  :: forall s a cs i o m n
    . MonadAff m
-  => Spec item s a cs i o m
-  -> Query n -> DSL item s a cs o m (Maybe n)
+  => Spec s a cs i o m
+  -> Query n -> DSL s a cs o m (Maybe n)
 handleQuery spec = case _ of
   Open n -> do
     handleVisibilityChange true
