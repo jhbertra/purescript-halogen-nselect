@@ -1,7 +1,7 @@
 module NSelect
   ( Props
   , Message(..)
-  , Query
+  , Query(..)
   , Action
   , State
   , HTML
@@ -14,13 +14,7 @@ module NSelect
   , setMenuProps
   , setItemProps
   , component
-  , open
-  , close
-  , focus
-  , highlight
   , raise
-  , select
-  , getState
   ) where
 
 import Prelude
@@ -386,24 +380,5 @@ handleQuery = case _ of
     state <- H.get
     pure $ Just $ q $ innerStateToState state
 
--- | Following are helpers so that you can query from the parent component.
-open :: Query Unit
-open = Open unit
-
-close :: Query Unit
-close = Close unit
-
-focus :: Query Unit
-focus = Focus unit
-
-highlight :: Int -> Query Unit
-highlight index = Highlight index unit
-
 raise :: forall pa cs m. pa -> Action pa cs m
 raise = Raise
-
-select :: Query Unit
-select = Select unit
-
-getState :: forall a. (State -> a) -> Query a
-getState = GetState
