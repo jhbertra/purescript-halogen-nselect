@@ -34,6 +34,7 @@ import Web.DOM.Element as Element
 import Web.DOM.ParentNode (QuerySelector(..), querySelector)
 import Web.Event.Event as Event
 import Web.HTML as Web
+import Web.HTML.HTMLElement (HTMLElement)
 import Web.HTML.HTMLElement as HTMLElement
 import Web.HTML.Window as Window
 import Web.UIEvent.FocusEvent (FocusEvent)
@@ -59,6 +60,7 @@ data Query a
   | Highlight Int a
   | Select a
   | GetState (State -> a)
+  | GetInputElement (HTMLElement -> a)
 
 data Action pa cs m
   = Init
@@ -380,5 +382,12 @@ handleQuery = case _ of
     state <- H.get
     pure $ Just $ q $ innerStateToState state
 
+  GetInputElement q -> do
+    H.getHTMLElementRef inputRef >>= case _ of
+      Nothing -> pure Nothing
+      Just el -> pure $ Just $ q el
+
+-- A helper function to redirect parent action through the `Emit` message, so
+-- that parent component can handle it.
 raise :: forall pa cs m. pa -> Action pa cs m
 raise = Raise
