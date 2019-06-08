@@ -112,7 +112,7 @@ handleAction (HandleDropdown msg) = case msg of
     state <- H.get
     for_ (Array.index state.filteredItems index) \item ->
       H.modify_ $ _ { value = item }
-    void $ H.query _dropdown unit Select.close
+    void $ H.query _dropdown unit $ H.tell Select.Close
   Select.InputValueChanged value -> do
     H.modify_ $ \state -> state
       { value = value

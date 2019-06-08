@@ -129,7 +129,7 @@ handleAction (OnKeyDownInput slot kbEvent) = do
   case KE.key kbEvent of
     "Tab" -> do
       H.liftEffect $ Event.preventDefault event
-      void $ H.query _dropdown slot Select.select
+      void $ H.query _dropdown slot $ H.tell Select.Select
     _ -> pure unit
 handleAction (HandleDropdown slot msg) = case msg of
   Select.Selected index -> do
@@ -138,9 +138,9 @@ handleAction (HandleDropdown slot msg) = case msg of
       case slot of
         DropdownFrom -> H.modify_ $ _ { from = item }
         DropdownTo -> H.modify_ $ _ { to = item }
-    void $ H.query _dropdown slot Select.close
+    void $ H.query _dropdown slot $ H.tell Select.Close
     when (slot == DropdownFrom) $ do
-      void $ H.query _dropdown DropdownTo Select.focus
+      void $ H.query _dropdown DropdownTo $ H.tell Select.Focus
   Select.InputValueChanged value -> do
     case slot of
       DropdownFrom -> H.modify_ $ _ { from = value }
