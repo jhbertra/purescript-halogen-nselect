@@ -72,7 +72,7 @@ data Action pa cs m
   | OnFocusInput
   | OnKeyDownInput KE.KeyboardEvent
   | OnKeyDownInput' (KeyDownHandler pa) KE.KeyboardEvent
-  | OnClickItem Int ME.MouseEvent
+  | OnClickItem Int
   | OnMouseEnterItem Int
   | OnValueInput String
   | Raise pa
@@ -206,7 +206,7 @@ setItemProps
   -> Array (HH.IProp (ItemProps r) (Action pa cs m))
 setItemProps index props = props <>
   [ HH.attr (HH.AttrName "data-nselect-item") (show index)
-  , HE.onClick $ Just <<< OnClickItem index
+  , HE.onClick $ Just <<< const (OnClickItem index)
   , HE.onMouseEnter $ Just <<< const (OnMouseEnterItem index)
   ]
 
@@ -334,8 +334,7 @@ handleAction = case _ of
     handleAction (OnKeyDownInput kbEvent)
     H.raise $ Emit $ parentOnKeyDown kbEvent
 
-  OnClickItem index ev -> do
-    H.liftEffect $ Event.preventDefault $ ME.toEvent $ ev
+  OnClickItem index -> do
     H.raise $ Selected index
 
   OnMouseEnterItem index -> do
