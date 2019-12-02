@@ -67,9 +67,9 @@ data Action pa cs m
   = Init
   | ReceiveProps (Props pa cs m)
   | OnWindowMouseDown
+  | OnWindowMouseUp
   | OnWindowDragEnd
   | OnMouseDownRoot
-  | OnMouseUpRoot
   | OnMouseDownToggle
   | OnFocusInput
   | OnKeyDownInput KE.KeyboardEvent
@@ -113,7 +113,6 @@ type Slot f s = H.Slot Query (Message f) s
 
 type RootProps r =
   ( onMouseDown :: ME.MouseEvent
-  , onMouseUp :: ME.MouseEvent
   | r
   )
 
@@ -124,7 +123,6 @@ setRootProps
   -> Array (HH.IProp (RootProps r) (Action pa cs m))
 setRootProps props = props <>
   [ HE.onMouseDown $ Just <<< const OnMouseDownRoot
-  , HE.onMouseUp $ Just <<< const OnMouseUpRoot
   ]
 
 type ToggleProps r =
@@ -289,6 +287,9 @@ handleAction = case _ of
       ES.eventListenerEventSource ET.mousedown (Window.toEventTarget win)
         (const $ Just OnWindowMouseDown)
     void $ H.subscribe $
+      ES.eventListenerEventSource ET.mouseup (Window.toEventTarget win)
+        (const $ Just OnWindowMouseUp)
+    void $ H.subscribe $
       ES.eventListenerEventSource DET.dragend (Window.toEventTarget win)
         (const $ Just OnWindowDragEnd)
 
@@ -300,6 +301,12 @@ handleAction = case _ of
     when (not state.clickedInside && state.isOpen) $ do
       handleVisibilityChange false
 
+  OnWindowMouseUp -> do
+    -- Handle the case of mousedown on NSelect dropdown, mouseup on the outside.
+    state <- H.get
+    when state.isOpen $
+      H.modify_ $ _ { clickedInside = false }
+
   OnWindowDragEnd -> do
     -- Handle the case of dragging from NSelect dropdown to the outside.
     state <- H.get
@@ -308,9 +315,6 @@ handleAction = case _ of
 
   OnMouseDownRoot -> do
     H.modify_ $ _ { clickedInside = true }
-
-  OnMouseUpRoot -> do
-    H.modify_ $ _ { clickedInside = false }
 
   OnMouseDownToggle -> do
     state <- H.get
