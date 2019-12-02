@@ -34,6 +34,7 @@ import Web.DOM.Element as Element
 import Web.DOM.ParentNode (QuerySelector(..), querySelector)
 import Web.Event.Event as Event
 import Web.HTML as Web
+import Web.HTML.Event.DragEvent.EventTypes as DET
 import Web.HTML.HTMLElement (HTMLElement)
 import Web.HTML.HTMLElement as HTMLElement
 import Web.HTML.Window as Window
@@ -66,6 +67,7 @@ data Action pa cs m
   = Init
   | ReceiveProps (Props pa cs m)
   | OnWindowMouseDown
+  | OnWindowDragEnd
   | OnMouseDownRoot
   | OnMouseUpRoot
   | OnMouseDownToggle
@@ -286,6 +288,9 @@ handleAction = case _ of
     void $ H.subscribe $
       ES.eventListenerEventSource ET.mousedown (Window.toEventTarget win)
         (const $ Just OnWindowMouseDown)
+    void $ H.subscribe $
+      ES.eventListenerEventSource DET.dragend (Window.toEventTarget win)
+        (const $ Just OnWindowDragEnd)
 
   ReceiveProps props -> do
     H.modify_ $ _ { props = props }
@@ -294,6 +299,12 @@ handleAction = case _ of
     state <- H.get
     when (not state.clickedInside && state.isOpen) $ do
       handleVisibilityChange false
+
+  OnWindowDragEnd -> do
+    -- Handle the case of dragging from NSelect dropdown to the outside.
+    state <- H.get
+    when state.isOpen $
+      H.modify_ $ _ { clickedInside = false }
 
   OnMouseDownRoot -> do
     H.modify_ $ _ { clickedInside = true }
