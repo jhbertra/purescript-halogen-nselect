@@ -10,3 +10,7 @@ Key differences from `purescript-halogen-select`:
 2. `NSelect` doesn't care item's type, it only uses `itemCount`, so that ArrowUp/ArrowDown/Enter works
 3. `NSelect` provides `setMenuProps`, so that after ArrowUp/ArrowDown, `NSelect` will keep the highlighted item visible [an example](https://nonbili.github.io/purescript-halogen-nselect/#Autocomplete)
 4. `NSelect` provides `setInputProps'`, so that user can easily handle more key bindings, like `Tab`, [an example](https://nonbili.github.io/purescript-halogen-nselect/#Two%20inputs)
+
+## Development
+
+Follow [examples/README.md](https://github.com/nonbili/purescript-halogen-nselect/blob/master/examples/README.md).
