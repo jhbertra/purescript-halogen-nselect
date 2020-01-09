@@ -50,6 +50,7 @@ type Props pa cs m =
 
 data Message pa
   = Selected Int
+  | HighlightedIndexChanged Int
   | InputValueChanged String
   | VisibilityChanged Boolean
   | Emit pa
@@ -242,13 +243,24 @@ handleVisibilityChange isOpen = do
 
   H.raise $ VisibilityChanged isOpen
 
+updateHighlightedIndex
+  :: forall pa cs m
+   . MonadEffect m
+  => Int
+  -> DSL pa cs m Unit
+updateHighlightedIndex index = do
+  state <- H.get
+  when (state.highlightedIndex /= index) do
+    H.modify_ $ _ { highlightedIndex = index }
+    H.raise $ HighlightedIndexChanged index
+
 handleHighlightedIndexChange
   :: forall pa cs m
    . MonadEffect m
   => Int
   -> DSL pa cs m Unit
 handleHighlightedIndexChange index = do
-  H.modify_ $ _ { highlightedIndex = index }
+  updateHighlightedIndex index
   scrollIntoViewIfNeeded index
 
 scrollIntoViewIfNeeded
@@ -353,9 +365,7 @@ handleAction = case _ of
     H.raise $ Selected index
 
   OnMouseEnterItem index -> do
-    H.modify_ $ _
-      { highlightedIndex = index
-      }
+    updateHighlightedIndex index
 
   OnValueInput value -> do
     handleHighlightedIndexChange 0

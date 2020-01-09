@@ -145,5 +145,5 @@ handleAction (HandleDropdown slot msg) = case msg of
     case slot of
       DropdownFrom -> H.modify_ $ _ { from = value }
       DropdownTo -> H.modify_ $ _ { to = value }
-  Select.VisibilityChanged _ -> pure unit
   Select.Emit q -> handleAction q
+  _ -> pure unit

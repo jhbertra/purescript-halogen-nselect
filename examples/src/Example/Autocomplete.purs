@@ -118,5 +118,5 @@ handleAction (HandleDropdown msg) = case msg of
       { value = value
       , filteredItems = Array.filter (\s -> String.contains (String.Pattern value) s) state.items
       }
-  Select.VisibilityChanged _ -> pure unit
   Select.Emit q -> handleAction q
+  _ -> pure unit
