@@ -2,29 +2,16 @@ module Main where
 
 import Prelude
 
-import Data.Maybe (Maybe(..))
-import Data.Tuple (Tuple(Tuple))
+import Halogen.CustomElement as CustomElement
 import Effect (Effect)
-import Effect.Aff (Aff)
-import Example.Dropdown as ExpDropdown
-import Example.ComponentInDropdown as ExpComponentInDropdown
 import Example.Autocomplete as ExpAutocomplete
+import Example.ComponentInDropdown as ExpComponentInDropdown
+import Example.Dropdown as ExpDropdown
 import Example.TwoInputs as ExpTwoInputs
-import Foreign.Object as Object
-import Halogen.Aff as HA
-import Halogen.Storybook (Stories, runStorybook, proxy)
-
-stories :: Stories Aff
-stories = Object.fromFoldable
-  [ Tuple "Dropdown" $ proxy ExpDropdown.component
-  , Tuple "Component in dropdown" $ proxy ExpComponentInDropdown.component
-  , Tuple "Autocomplete" $ proxy ExpAutocomplete.component
-  , Tuple "Two inputs" $ proxy ExpTwoInputs.component
-  ]
 
 main :: Effect Unit
-main = HA.runHalogenAff do
-  HA.awaitBody >>= runStorybook
-    { stories
-    , logo: Nothing
-    }
+main = do
+  CustomElement.define "example-autocomplete" ExpAutocomplete.component
+  CustomElement.define "example-dropdown" ExpDropdown.component
+  CustomElement.define "example-component-in-dropdown" ExpComponentInDropdown.component
+  CustomElement.define "example-two-inputs" ExpTwoInputs.component

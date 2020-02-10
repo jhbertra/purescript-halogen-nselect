@@ -59,15 +59,10 @@ renderSelect state st =
 
 render :: State -> HTML
 render state =
-  HH.div_
-  [ HH.p
-    [ class_ "mb-3"]
-    [ HH.text "Trigger parent action from dropdown."]
-  , HH.slot _dropdown unit Select.component
+  HH.slot _dropdown unit Select.component
     { render: renderSelect state
     , itemCount: 0
     } $ Just <<< HandleDropdown
-  ]
 
 component :: H.Component HH.HTML Query Unit Void Aff
 component = H.mkComponent

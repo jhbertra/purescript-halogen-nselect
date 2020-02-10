@@ -1,8 +1,11 @@
+.cache
 bower_components
+dist
 node_modules
 yarn.lock
 
 .psc-ide-port
 .psci_modules
+.spago
 output
 docs

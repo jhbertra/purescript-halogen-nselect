@@ -1,17 +1,50 @@
-@import "tailwindcss/base";
+@tailwind base;
 
-@import "tailwindcss/components";
+@tailwind components;
 
-@import "tailwindcss/utilities";
+@tailwind utilities;
 
-@import "./Storybook.css";
+h1 {
+  font-size: 2em;
+  margin: .67em 0;
+}
+
+h2 {
+  font-size: 1.5em;
+  margin: .67em 0;
+}
 
 button {
   @apply border px-4 py-1;
 }
 
+article ul {
+  list-style: initial;
+  margin-bottom: 1rem;
+  padding-left: 1.25em;
+}
+
+p {
+  line-height: 1.6;
+  margin-bottom: 1em;
+}
+
+code {
+  padding: 0 .25em;
+  background: #606262;
+  color: #d1d9e1;
+}
+
 input {
   @apply border;
+}
+
+.container {
+  max-width: 50rem;
+}
+
+.hljs {
+  margin-bottom: 1rem;
 }
 
 .Dropdown {
