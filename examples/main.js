@@ -1,3 +1,5 @@
-import Main from "./output/Main";
-
-Main.main();
+if (process.env.NODE_ENV === "production") {
+  require("./output/bundle");
+} else {
+  require("./output/Main").main();
+}

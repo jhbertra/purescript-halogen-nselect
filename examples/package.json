@@ -2,12 +2,13 @@
   "private": true,
   "license": "BSD-3-Clause",
   "scripts": {
-    "build": "pulp build -I ../src -- +RTS -N2 -RTS && webpack --mode production --progress",
+    "build": "spago bundle-app -t output/bundle.js -u '+RTS -N2 -RTS' && parcel build --public-url . -d ../docs index.html",
     "pscid:build": "spago build",
     "start": "parcel index.html"
   },
   "devDependencies": {
     "@nonbili/posthtml-md-element": "https://github.com/nonbili/posthtml-md-element.git#d7ff77d78fd3ecfd6e2e239b9b58c04950a40367",
+    "cssnano": "^4.1.10",
     "highlight.js": "^9.18.1",
     "tailwindcss": "^1.2.0"
   }
