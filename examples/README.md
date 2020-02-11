@@ -150,3 +150,5 @@ This example demonstrates using `Tab` key to select an item in the first input d
 ## Acknowledgement
 
 This library was inspired by [downshift](https://github.com/downshift-js/downshift) and [purescript-halogen-select](https://github.com/citizennet/purescript-halogen-select).
+
+[Differences from purescript-halogen-select](https://github.com/nonbili/purescript-halogen-nselect/issues/6).
