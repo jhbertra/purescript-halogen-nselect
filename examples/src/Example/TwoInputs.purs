@@ -77,9 +77,9 @@ renderSelect state slot st =
     [ class_ "Dropdown"
     , style "width: 20rem;"
     ]
-    [ HH.ul_ $
+    [ HH.div_ $
         state.items # Array.mapWithIndex \index item ->
-      HH.li
+      HH.div
       ( Select.setItemProps index
         [ class_ $ "py-1 px-3 cursor-pointer" <>
             Monoid.guard (index == st.highlightedIndex) " bg-blue-300"
@@ -95,24 +95,19 @@ renderSelect state slot st =
 
 render :: State -> HTML
 render state =
-  HH.div_
-  [ HH.p
-    [ class_ "mb-3"]
-    [ HH.text "Use TAB to complete the first and focus the second input."]
-  , HH.div
-    [ class_ "flex" ]
-    [ HH.slot _dropdown DropdownFrom Select.component
-      { render: renderSelect state DropdownFrom
-      , itemCount: Array.length state.items
-      } $ Just <<< HandleDropdown DropdownFrom
-    , HH.span
-      [ class_ "mx-4" ]
-      [ HH.text "-" ]
-    , HH.slot _dropdown DropdownTo Select.component
-      { render: renderSelect state DropdownTo
-      , itemCount: Array.length state.items
-      } $ Just <<< HandleDropdown DropdownTo
-    ]
+  HH.div
+  [ class_ "flex" ]
+  [ HH.slot _dropdown DropdownFrom Select.component
+    { render: renderSelect state DropdownFrom
+    , itemCount: Array.length state.items
+    } $ Just <<< HandleDropdown DropdownFrom
+  , HH.span
+    [ class_ "mx-4" ]
+    [ HH.text "-" ]
+  , HH.slot _dropdown DropdownTo Select.component
+    { render: renderSelect state DropdownTo
+    , itemCount: Array.length state.items
+    } $ Just <<< HandleDropdown DropdownTo
   ]
 
 component :: H.Component HH.HTML Query Unit Void Aff

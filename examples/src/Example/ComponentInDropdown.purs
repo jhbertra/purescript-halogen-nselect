@@ -48,7 +48,7 @@ renderSelect state st =
   ) $ join
   [ pure $ HH.button
     ( Select.setToggleProps [])
-    [ HH.text "toggle" ]
+    [ HH.text "Toggle" ]
   , guard st.isOpen $>
       HH.div
       [ class_ "Dropdown p-4"
@@ -61,10 +61,7 @@ renderSelect state st =
 render :: State -> HTML
 render state =
   HH.div_
-  [ HH.p
-    [ class_ "mb-3"]
-    [ HH.text "Render another component inside dropdown."]
-  , HH.slot _dropdown unit Select.component
+  [ HH.slot _dropdown unit Select.component
     { render: renderSelect state
     , itemCount: 0
     } $ Just <<< HandleDropdown

@@ -4,18 +4,43 @@
 
 @tailwind utilities;
 
+body {
+  @apply text-gray-800;
+}
+
 h1 {
   font-size: 2em;
-  margin: .67em 0;
+  margin: 1em 0;
 }
 
 h2 {
   font-size: 1.5em;
-  margin: .67em 0;
+  margin: 1.5em 0 .67em;
+}
+
+h3 {
+  font-size: 1.25em;
+  margin: 1.25em 0 .67em;
+}
+
+a {
+  @apply text-indigo-500;
+}
+
+blockquote {
+  @apply border-l-4 border-purple-300 pl-4 py-1 bg-blue-100;
+}
+
+blockquote p {
+  margin: 0;
 }
 
 button {
-  @apply border px-4 py-1;
+  @apply px-4 py-1 bg-orange-400 text-white text-sm;
+}
+
+button:hover {
+  @apply shadow-md;
 }
 
 article ul {
@@ -30,13 +55,11 @@ p {
 }
 
 code {
-  padding: 0 .25em;
-  background: #606262;
-  color: #d1d9e1;
+  @apply bg-gray-200 text-purple-400 rounded-sm px-1;
 }
 
 input {
-  @apply border;
+  @apply border px-2;
 }
 
 .container {
@@ -44,7 +67,11 @@ input {
 }
 
 .hljs {
-  margin-bottom: 1rem;
+  @apply mb-4 rounded-sm;
+}
+
+.Demo {
+  @apply bg-blue-100 p-4 mb-1;
 }
 
 .Dropdown {

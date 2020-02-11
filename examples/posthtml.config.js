@@ -1,5 +1,4 @@
 const hljs = require("highlight.js");
-const md = require("markdown-it");
 
 module.exports = {
   plugins: {
@@ -19,7 +18,7 @@ module.exports = {
           } catch (_) {}
         }
 
-        return '<pre class="hljs">' + md.utils.escapeHtml(str) + "</pre>";
+        return '<pre class="hljs">' + str + "</pre>";
       }
     }
   }

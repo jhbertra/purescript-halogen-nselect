@@ -43,7 +43,7 @@ renderSelect state st =
   ) $ join
   [ pure $ HH.button
     ( Select.setToggleProps [])
-    [ HH.text "toggle" ]
+    [ HH.text $ if st.isOpen then "🐳️ Close" else "🐋️ Open" ]
   , guard st.isOpen $> HH.div
     [ class_ "Dropdown p-4"
     ]

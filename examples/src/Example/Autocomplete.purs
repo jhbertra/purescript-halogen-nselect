@@ -70,13 +70,13 @@ renderSelect state st =
   , guard st.isOpen $> HH.div
     [ class_ "Dropdown"
     ]
-    [ HH.ul
+    [ HH.div
       ( Select.setMenuProps
         [ class_ "overflow-y-auto"
         , style "max-height: 10rem;"
         ]
       ) $ state.filteredItems # Array.mapWithIndex \index item ->
-      HH.li
+      HH.div
       ( Select.setItemProps index
         [ class_ $ "py-1 px-3 cursor-pointer" <>
             Monoid.guard (index == st.highlightedIndex) " bg-blue-300"
@@ -88,15 +88,10 @@ renderSelect state st =
 
 render :: State -> HTML
 render state =
-  HH.div_
-  [ HH.p
-    [ class_ "mb-3"]
-    [ HH.text "Use ArrowUp/ArrowDown to change selection, Enter to confirm."]
-  , HH.slot _dropdown unit Select.component
-    { render: renderSelect state
-    , itemCount: Array.length state.filteredItems
-    } $ Just <<< HandleDropdown
-  ]
+  HH.slot _dropdown unit Select.component
+  { render: renderSelect state
+  , itemCount: Array.length state.filteredItems
+  } $ Just <<< HandleDropdown
 
 component :: H.Component HH.HTML Query Unit Void Aff
 component = H.mkComponent
