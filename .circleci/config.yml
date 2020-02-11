@@ -9,7 +9,7 @@ jobs:
 
       - restore_cache:
           keys:
-          - deps-{{ checksum "bower.json" }}-{{ checksum "examples/spago.dhall" }}
+          - deps-{{ checksum "examples/package.json" }}-{{ checksum "examples/packages.dhall" }}
 
       - run:
           command: |
@@ -28,7 +28,7 @@ jobs:
             - examples/node_modules
             - examples/.spago
             - output
-          key: deps-{{ checksum "bower.json" }}-{{ checksum "examples/spago.dhall" }}
+          key: deps-{{ checksum "examples/package.json" }}-{{ checksum "examples/packages.dhall" }}
 
       - run:
           command: |

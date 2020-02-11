@@ -8,4 +8,9 @@ aNother Select library in purescript halogen.
 
 ## Development
 
-Follow [examples/README.md](examples/README.md).
+```
+cd examples
+yarn
+spago build -w
+yarn start
+```
