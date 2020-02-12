@@ -33,6 +33,7 @@ render state =
   HH.div_
   [ HH.input
     [ HP.value state.value
+    , HP.placeholder "Type something"
     , HE.onValueInput $ Just <<< OnInput
     ]
   ]

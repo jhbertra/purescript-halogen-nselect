@@ -59,12 +59,13 @@ initialState =
 renderSelect :: State -> Select.State -> Select.HTML Action () Aff
 renderSelect state st =
   HH.div
-  ( Select.setRootProps []
+  ( Select.setRootProps [ class_ "inline-block"]
   ) $ join
   [ pure $ HH.input
     ( Select.setInputProps
       [ style "width: 20rem"
       , HP.value state.value
+      , HP.placeholder "Autocomplete input"
       ]
     )
   , guard st.isOpen $> HH.div

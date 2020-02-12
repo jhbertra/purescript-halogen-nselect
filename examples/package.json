@@ -7,6 +7,7 @@
     "start": "parcel index.html"
   },
   "devDependencies": {
+    "@fullhuman/postcss-purgecss": "^2.0.6",
     "@nonbili/posthtml-md-element": "https://github.com/nonbili/posthtml-md-element.git#d7ff77d78fd3ecfd6e2e239b9b58c04950a40367",
     "cssnano": "^4.1.10",
     "highlight.js": "^9.18.1",

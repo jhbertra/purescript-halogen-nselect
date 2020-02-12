@@ -64,13 +64,14 @@ renderSelect
   -> Select.HTML Action () Aff
 renderSelect state slot st =
   HH.div
-  ( Select.setRootProps []
+  ( Select.setRootProps [ class_ "inline-block"]
   ) $ join
   [ pure $ HH.input
     ( Select.setInputProps'
       { onKeyDown: \e -> OnKeyDownInput slot e
       }
       [ HP.value value
+      , HP.placeholder "input"
       ]
     )
   , guard st.isOpen $> HH.div

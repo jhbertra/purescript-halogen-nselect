@@ -49,6 +49,7 @@ renderSelect state st =
     ]
     [ HH.input
       [ HP.value state.value
+      , HP.placeholder "Type something"
       , HE.onValueInput $ Just <<< Select.raise <<< OnInput
       ]
     , HH.div_
