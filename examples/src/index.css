@@ -1,9 +1,12 @@
+/* purgecss start ignore */
 @tailwind base;
+/* purgecss end ignore */
 
 @tailwind components;
 
 @tailwind utilities;
 
+/* purgecss start ignore */
 body {
   @apply text-gray-800;
 }
@@ -114,3 +117,5 @@ article {
 .Dropdown {
   @apply shadow-md absolute bg-white;
 }
+
+/* purgecss end ignore */
