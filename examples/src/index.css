@@ -62,12 +62,49 @@ input {
   @apply border px-2;
 }
 
-.container {
-  max-width: 50rem;
-}
-
 .hljs {
   @apply mb-4 rounded-sm;
+}
+
+article {
+  @apply p-4;
+}
+
+.table-of-contents ul {
+  @apply mb-0;
+}
+
+@screen lg {
+  article {
+    padding-left: 22rem;
+  }
+
+  .table-of-contents {
+    @apply fixed left-0 top-0 bottom-0 bg-purple-600 py-8 text-white overflow-y-auto;
+    width: 18rem;
+  }
+
+  .table-of-contents ul {
+    @apply list-none m-0 p-0;
+    line-height: 2;
+  }
+
+  .table-of-contents li li {
+    @apply pl-6;
+  }
+
+  .table-of-contents li li a {
+    @apply border-l border-white;
+  }
+
+  .table-of-contents a {
+    @apply pl-6 text-white block;
+    line-height: 2.5rem;
+  }
+
+  .table-of-contents a:hover {
+    @apply bg-purple-800;
+  }
 }
 
 .Demo {

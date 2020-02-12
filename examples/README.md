@@ -1,3 +1,5 @@
+[[toc]]
+
 # NSelect
 
 NSelect is a select library for PureScript Halogen. It manages some common logic to make building components like typeahead or dropdown easier. How your component looks is completely controlled by you.
@@ -112,7 +114,7 @@ Click the button above should open a dropdown. So, with only a few lines of code
 
 The source code can be found in the [examples](https://github.com/nonbili/purescript-halogen-nselect/tree/master/examples) folder.
 
-### Render another component in dropdown
+### Embed other component
 
 This example is similar to the above one, but this time, the input inside the dropdown is actually another component. This means you can embed any components furthur inside `NSelect`, as long as `Slot` types are correct.
 

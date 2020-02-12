@@ -8,9 +8,11 @@
   },
   "devDependencies": {
     "@fullhuman/postcss-purgecss": "^2.0.6",
-    "@nonbili/posthtml-md-element": "https://github.com/nonbili/posthtml-md-element.git#d7ff77d78fd3ecfd6e2e239b9b58c04950a40367",
+    "@nonbili/posthtml-md-element": "https://github.com/nonbili/posthtml-md-element.git#f96bf31a2188607cc55d1b8f27c5e176dddff4bc",
     "cssnano": "^4.1.10",
     "highlight.js": "^9.18.1",
+    "markdown-it-anchor": "^5.2.5",
+    "markdown-it-table-of-contents": "^0.4.4",
     "tailwindcss": "^1.2.0"
   }
 }

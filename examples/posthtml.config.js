@@ -1,5 +1,4 @@
 const hljs = require("highlight.js");
-
 module.exports = {
   plugins: {
     "@nonbili/posthtml-md-element": {
@@ -19,7 +18,13 @@ module.exports = {
         }
 
         return '<pre class="hljs">' + str + "</pre>";
-      }
+      },
+      withMd: md =>
+        md
+          .use(require("markdown-it-anchor"))
+          .use(require("markdown-it-table-of-contents"), {
+            includeLevel: [2, 3]
+          })
     }
   }
 };
