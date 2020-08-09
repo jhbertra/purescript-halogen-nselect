@@ -1,0 +1,68 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Documentation of purescript-halogen-nselect</title><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.1/styles/rainbow.min.css"><link rel="stylesheet" href="src.b794ce85.css"></head><body> <article class="container"> <p><div class="table-of-contents"><ul><li><a href="#introduction">Introduction</a></li><li><a href="#a-dropdown-example">A dropdown example</a></li><li><a href="#more-examples">More examples</a><ul><li><a href="#embed-other-component">Embed other component</a></li><li><a href="#autocomplete">Autocomplete</a></li><li><a href="#two-inputs">Two inputs</a></li></ul></li><li><a href="#acknowledgement">Acknowledgement</a></li></ul></div></p><h1 id="nselect">NSelect</h1><p>NSelect is a select library for PureScript Halogen. It manages some common logic to make building components like typeahead or dropdown easier. How your component looks is completely controlled by you.</p><p>This document assumes you are already familiar with PureScript and Halogen. The type signatures in this document are for demonstration purpose only, they are inaccurate because many type variables are ommited.</p><h2 id="introduction">Introduction</h2><p>Every Halogen component has a type signature like this:</p><pre class="hljs hs"><span class="hljs-title">component</span> :: <span class="hljs-type">H</span>.<span class="hljs-type">Component</span> <span class="hljs-type">HH</span>.<span class="hljs-type">HTML</span> <span class="hljs-type">Query</span> <span class="hljs-type">Props</span> <span class="hljs-type">Message</span> m
+</pre><ul>
+<li><code>Query</code> defines what actions can be sent to this component from the outside (parent component).</li>
+<li><code>Props</code> defines what data this component is accepting, also called <code>input</code> in other documentations. It's similar to the props in React, but not exactly the same.</li>
+<li><code>Message</code> defines what events this component emits to the outside (parent component), also called <code>output</code> in other documentations.</li>
+</ul><p>In the case of <code>NSelect.component</code>, <code>Props</code> is more interesting than the other two.</p><pre class="hljs hs"><span class="hljs-comment">-- Excerpt from module NSelect</span>
+
+<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">State</span> =</span>
+  { isOpen :: <span class="hljs-type">Boolean</span>
+  , highlightedIndex :: <span class="hljs-type">Int</span>
+  }
+
+<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">Props</span> =</span>
+  { render :: <span class="hljs-type">State</span> -&gt; <span class="hljs-type">HTML</span>
+  , itemCount :: <span class="hljs-type">Int</span>
+  }
+</pre><p><code>Props</code> is a record of two fields, let's ignore the <code>itemCount</code> field and focus on the <code>render</code> field. You can see from the type signature, <code>render</code> field is a function that takes <code>State</code> and returns <code>HTML</code>. This means when using <code>NSelect</code>, you need to pass a <code>render</code> function to <code>NSelect</code>.</p><p>And if you take a look at the definition of <code>NSelect.render</code>:</p><pre class="hljs hs"><span class="hljs-title">render</span> :: <span class="hljs-type">InnerState</span> -&gt; <span class="hljs-type">HTML</span>
+<span class="hljs-title">render</span> state =
+  state.props.render $ innerStateToState state
+</pre><p><code>NSelect</code> doesn't render anything more than you passed in. That's why at the beginning of this document, we said</p><blockquote>
+<p>How the component looks is completely controlled by you.</p>
+</blockquote><h2 id="a-dropdown-example">A dropdown example</h2><p>Let's use <code>NSelect</code> to build a simple dropdown. The <code>purescript-halogen-nselect</code> package has only one module called <code>NSelect</code>, first <code>import NSelect as NSelect</code>.</p><pre class="hljs hs"><span class="hljs-keyword">module</span> Example.Dropdown <span class="hljs-keyword">where</span>
+
+<span class="hljs-keyword">import</span> NSelect <span class="hljs-keyword">as</span> Select
+</pre><p>Then, let's write the <code>render</code> function and fill in the missing parts piece by piece.</p><pre class="hljs hs"><span class="hljs-title">render</span> :: <span class="hljs-type">State</span> -&gt; <span class="hljs-type">HTML</span>
+<span class="hljs-title">render</span> state =
+  <span class="hljs-type">HH</span>.slot _dropdown unit <span class="hljs-type">Select</span>.component
+    { render: renderSelect state
+    , itemCount: <span class="hljs-number">0</span>
+    } $ <span class="hljs-type">Just</span> &lt;&lt;&lt; <span class="hljs-type">HandleDropdown</span>
+
+</pre><p>The standard way in Halogen to render a child component is by using <code>HH.slot</code>. As said above, we need to pass a <code>render</code> function to <code>NSelect</code>. Here, we pass <code>renderSelect</code> to <code>Select.component</code>.</p><pre class="hljs hs"><span class="hljs-title">renderSelect</span> :: <span class="hljs-type">State</span> -&gt; <span class="hljs-type">Select</span>.<span class="hljs-type">State</span> -&gt; <span class="hljs-type">Select</span>.<span class="hljs-type">HTML</span>
+<span class="hljs-title">renderSelect</span> state st =
+  <span class="hljs-type">HH</span>.div (<span class="hljs-type">Select</span>.setRootProps []) $ join
+  [ <span class="hljs-comment">-- A button to open/close dropdown</span>
+    pure $ <span class="hljs-type">HH</span>.button
+    ( <span class="hljs-type">Select</span>.setToggleProps [])
+    [ <span class="hljs-type">HH</span>.text $ <span class="hljs-keyword">if</span> st.isOpen <span class="hljs-keyword">then</span> <span class="hljs-string">"Close"</span> <span class="hljs-keyword">else</span> <span class="hljs-string">"Open"</span> ]
+    <span class="hljs-comment">-- The dropdown itself</span>
+  , guard st.isOpen $&gt; <span class="hljs-type">HH</span>.div_
+    [ <span class="hljs-type">HH</span>.input
+      [ <span class="hljs-type">HP</span>.value state.value
+      , <span class="hljs-type">HE</span>.onValueInput $ <span class="hljs-type">Just</span> &lt;&lt;&lt; <span class="hljs-type">Select</span>.raise &lt;&lt;&lt; <span class="hljs-type">OnInput</span>
+      ]
+    , <span class="hljs-type">HH</span>.div_
+      [ <span class="hljs-type">HH</span>.text $ <span class="hljs-string">"You typed: "</span> &lt;&gt; state.value
+      ]
+    ]
+  ]
+</pre><p>Some observations:</p><ul>
+<li><code>Select.setRootProps</code> is used on the dropdown root element, so that click outside will close the dropdown.</li>
+<li><code>Select.setToggleProps</code> is used on the toggle button, so that <code>NSelect</code> will update the <code>st.isOpen</code> value.</li>
+<li>Since <code>renderSelect</code> is passed to and rendered inside <code>NSelect</code>, it has different return type from <code>Example.Dropdown.render</code>. But you can still trigger <code>Example.Dropdown.Action</code> by using <code>Select.raise</code>.</li>
+</ul><p>Demo:</p><div class="Demo"> <example-dropdown></example-dropdown>
+</div><p>Click the button above should open a dropdown. So, with only a few lines of code, you get:</p><ul>
+<li>A toggle button to open a dropdown, you don't need to manage the <code>open</code> state of dropdown</li>
+<li>Click outside to close the dropdown, you don't need to implement it repeatedly</li>
+</ul><h2 id="more-examples">More examples</h2><p>The source code can be found in the <a href="https://github.com/nonbili/purescript-halogen-nselect/tree/master/examples">examples</a> folder.</p><h3 id="embed-other-component">Embed other component</h3><p>This example is similar to the above one, but this time, the input inside the dropdown is actually another component. This means you can embed any components furthur inside <code>NSelect</code>, as long as <code>Slot</code> types are correct.</p><div class="Demo"> <example-component-in-dropdown></example-component-in-dropdown>
+</div><h3 id="autocomplete">Autocomplete</h3><p>Besides <code>Select.setRootProps</code>, this example uses three more helpers:</p><ul>
+<li><code>Select.setInputProps</code> allows <code>NSelect</code> to manage focus/blur event of <code>&lt;input&gt;</code>, to change <code>isOpen</code> state accordingly</li>
+<li><code>Select.setMenuProps</code> allows <code>NSelect</code> to track the scroll position</li>
+<li><code>Select.setItemProps</code> allows <code>NSelect</code> to emit <code>Selected</code> Message when user select an item</li>
+</ul><p>This example demonstrates:</p><ul>
+<li>Press <code>ArrowUp</code>/<code>ArrowDown</code> to change selection, <code>NSelect</code> will make sure current highlighted item is visible</li>
+<li>Press <code>Enter</code> to select</li>
+</ul><div class="Demo"> <example-autocomplete></example-autocomplete>
+</div><h3 id="two-inputs">Two inputs</h3><p>When using <code>Select.setInputProps</code>, <code>NSelect</code> manages <code>KeyDownEvent</code> of <code>&lt;input&gt;</code> for you, so that pressing <code>Enter</code> will select current highlighted item. Use <code>Select.setInputProps'</code> to bind more shortcuts to your <code>&lt;input&gt;</code>.</p><p>This example demonstrates using <code>Tab</code> key to select an item in the first input dropdown and focus the second input.</p><div class="Demo"> <example-two-inputs></example-two-inputs>
+</div><h2 id="acknowledgement">Acknowledgement</h2><p>This library was inspired by <a href="https://github.com/downshift-js/downshift">downshift</a> and <a href="https://github.com/citizennet/purescript-halogen-select">purescript-halogen-select</a>.</p><p><a href="https://github.com/nonbili/purescript-halogen-nselect/issues/6">Differences from purescript-halogen-select</a>.</p> </article> <script src="main.e812e4ec.js"></script> <a href="https://github.com/nonbili/purescript-halogen-nselect" class="github-corner" aria-label="View source on Github"><svg width="80" height="80" viewBox="0 0 250 250" style="position:absolute;top:0;border:0;right:0" aria-hidden="true" fill="#151513" color="#fff"><path d="M0 0l115 115h15l12 27 108 108V0z"/><path d="M128.3 109c-14.5-9.3-9.3-19.4-9.3-19.4 3-6.9 1.5-11 1.5-11-1.3-6.6 2.9-2.3 2.9-2.3 3.9 4.6 2.1 11 2.1 11-2.6 10.3 5.1 14.6 8.9 15.9" fill="currentColor" style="transform-origin:130px 106px" class="octo-arm"/><path d="M115 115c-.1.1 3.7 1.5 4.8.4l13.9-13.8c3.2-2.4 6.2-3.2 8.5-3-8.4-10.6-14.7-24.2 1.6-40.6 4.7-4.6 10.2-6.8 15.9-7 .6-1.6 3.5-7.4 11.7-10.9 0 0 4.7 2.4 7.4 16.1 4.3 2.4 8.4 5.6 12.1 9.2 3.6 3.6 6.8 7.8 9.2 12.2 13.7 2.6 16.2 7.3 16.2 7.3-3.6 8.2-9.4 11.1-10.9 11.7-.3 5.8-2.4 11.2-7.1 15.9-16.4 16.4-30 10-40.6 1.6.2 2.8-1 6.8-5 10.8L141 136.5c-1.2 1.2.6 5.4.8 5.3z" fill="currentColor" class="octo-body"/></svg></a><style>.github-corner:hover .octo-arm{animation:octocat-wave .56s ease-in-out}@keyframes octocat-wave{0%,to{transform:rotate(0)}20%,60%{transform:rotate(-25deg)}40%,80%{transform:rotate(10deg)}}@media (max-width:500px){.github-corner:hover .octo-arm{animation:none}.github-corner .octo-arm{animation:octocat-wave .56s ease-in-out}}</style> </body></html>
