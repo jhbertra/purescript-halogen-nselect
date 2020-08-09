@@ -336,25 +336,22 @@ handleAction = case _ of
     handleVisibilityChange true
 
   OnKeyDownInput kbEvent -> do
-    state <- H.get
+    s <- H.get
     let event = KE.toEvent kbEvent
-    when state.isOpen $ case KE.key kbEvent of
+    when (s.isOpen && s.props.itemCount > 0) $ case KE.key kbEvent of
       "ArrowUp" -> do
         H.liftEffect $ Event.preventDefault event
-        s <- H.get
         let nextIndex = max 0 (s.highlightedIndex - 1)
         when (nextIndex /= s.highlightedIndex) $
           handleHighlightedIndexChange nextIndex
       "ArrowDown" -> do
         H.liftEffect $ Event.preventDefault event
-        s <- H.get
         let nextIndex = min (s.props.itemCount - 1) (s.highlightedIndex + 1)
         when (nextIndex /= s.highlightedIndex) $
           handleHighlightedIndexChange nextIndex
       "Enter" -> do
-        s <- H.get
-        when (s.props.itemCount > 0) $
-          H.raise $ Selected s.highlightedIndex
+        H.liftEffect $ Event.preventDefault event
+        H.raise $ Selected s.highlightedIndex
       _ -> pure unit
 
   OnKeyDownInput' parentOnKeyDown kbEvent -> do
