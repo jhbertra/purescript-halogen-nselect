@@ -13,16 +13,12 @@ to generate this file without the comments in this block.
 { name = "halogen-nselect"
 , dependencies =
   [ "aff"
-  , "arrays"
-  , "control"
   , "effect"
   , "foldable-traversable"
   , "halogen"
-  , "halogen-custom-element"
   , "maybe"
   , "prelude"
   , "psci-support"
-  , "strings"
   , "unsafe-coerce"
   , "web-dom"
   , "web-events"
@@ -30,5 +26,5 @@ to generate this file without the comments in this block.
   , "web-uievents"
   ]
 , packages = ./packages.dhall
-, sources = [ "src/**/*.purs", "examples/**/*.purs" ]
+, sources = [ "src/**/*.purs" ]
 }

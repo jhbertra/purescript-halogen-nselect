@@ -13,6 +13,7 @@
     "highlight.js": "^9.18.1",
     "markdown-it-anchor": "^5.2.5",
     "markdown-it-table-of-contents": "^0.4.4",
+    "parcel": "^2.2.1",
     "tailwindcss": "^1.2.0"
   }
 }

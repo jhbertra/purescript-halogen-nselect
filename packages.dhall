@@ -10,3 +10,4 @@ in  upstream
         [ "aff", "effect", "halogen", "prelude", "psci-support", "web-html" ]
         "https://github.com/input-output-hk/purescript-halogen-custom-element.git"
         "05dd1f21a00f0e21824a39b57737e41ec4ee6c19"
+  with halogen-nselect = ./spago.dhall as Location
