@@ -20,7 +20,7 @@ module NSelect
 import Prelude
 
 import Data.Foldable (traverse_)
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), isJust)
 import Effect.Aff as Aff
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect)
@@ -69,6 +69,7 @@ data Action pa cs m
   | ReceiveProps (Props pa cs m)
   | OnWindowMouseDown
   | OnWindowMouseUp
+  | OnWindowMouseMove
   | OnWindowDragEnd
   | OnMouseDownRoot
   | OnMouseDownToggle
@@ -85,6 +86,13 @@ type InnerState pa cs m =
   , clickedInside :: Boolean
   , isOpen :: Boolean
   , highlightedIndex :: Int
+  -- When we use the arrow keys, we want to prevent the mouse from stealing
+  -- the selection back if it is hovering over top of the dropdown. So when an
+  -- arrow key is pressed, we create a subscription that listens for a
+  -- mousemove event on the window. When this event is fired, we unsubscribe
+  -- and clean this value up. If this value is `Just`, we ignore the
+  -- `OnMouseEnterItem` action.
+  , mouseMoveSubscription :: Maybe H.SubscriptionId
   }
 
 initialState :: forall pa cs m. Props pa cs m -> InnerState pa cs m
@@ -93,6 +101,7 @@ initialState props =
   , clickedInside: false
   , isOpen: false
   , highlightedIndex: 0
+  , mouseMoveSubscription: Nothing
   }
 
 type State =
@@ -261,6 +270,13 @@ handleHighlightedIndexChange
   => Int
   -> DSL pa cs m Unit
 handleHighlightedIndexChange index = do
+  waitingForMouseMove <- H.gets $ isJust <<< _.mouseMoveSubscription
+  when (not waitingForMouseMove) do
+    win <- H.liftEffect Web.window
+    mouseMoveSubscription <- H.subscribe $
+      QE.eventListener ET.mousemove (Window.toEventTarget win)
+        (const $ Just OnWindowMouseMove)
+    H.modify_ _ { mouseMoveSubscription = Just mouseMoveSubscription }
   updateHighlightedIndex index
   scrollIntoViewIfNeeded index
 
@@ -319,6 +335,11 @@ handleAction = case _ of
       $ H.modify_
       $ _ { clickedInside = false }
 
+  OnWindowMouseMove -> do
+    mouseMoveSubscription <- H.gets _.mouseMoveSubscription
+    H.modify_ _ { mouseMoveSubscription = Nothing }
+    traverse_ H.unsubscribe mouseMoveSubscription
+
   OnWindowDragEnd -> do
     -- Handle the case of dragging from NSelect dropdown to the outside.
     state <- H.get
@@ -363,7 +384,9 @@ handleAction = case _ of
     H.raise $ Selected index
 
   OnMouseEnterItem index -> do
-    updateHighlightedIndex index
+    waitingForMouseMove <- H.gets $ isJust <<< _.mouseMoveSubscription
+    when (not waitingForMouseMove) do
+      updateHighlightedIndex index
 
   OnValueInput value -> do
     handleHighlightedIndexChange 0
