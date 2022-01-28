@@ -11,7 +11,24 @@ When creating a new Spago project, you can use
 to generate this file without the comments in this block.
 -}
 { name = "halogen-nselect"
-, dependencies = [ "console", "effect", "prelude", "psci-support" ]
+, dependencies =
+  [ "aff"
+  , "arrays"
+  , "control"
+  , "effect"
+  , "foldable-traversable"
+  , "halogen"
+  , "halogen-custom-element"
+  , "maybe"
+  , "prelude"
+  , "psci-support"
+  , "strings"
+  , "unsafe-coerce"
+  , "web-dom"
+  , "web-events"
+  , "web-html"
+  , "web-uievents"
+  ]
 , packages = ./packages.dhall
-, sources = [ "src/**/*.purs", "test/**/*.purs" ]
+, sources = [ "src/**/*.purs", "examples/**/*.purs" ]
 }

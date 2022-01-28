@@ -4,22 +4,17 @@ import Example.Prelude
 
 import Control.MonadPlus (guard)
 import Data.Array as Array
-import Data.Const (Const)
 import Data.Foldable (for_)
-import Data.Maybe (Maybe(..))
 import Data.Monoid as Monoid
 import Data.String as String
-import Data.Symbol (SProxy(..))
 import Effect.Aff (Aff)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import NSelect as Select
+import Type.Proxy (Proxy(..))
 
-type Query = Const Void
-
-data Action
-  = HandleDropdown (Select.Message Action)
+data Action = HandleDropdown (Select.Message Action)
 
 type State =
   { value :: String
@@ -31,7 +26,7 @@ type Slots =
   ( dropdown :: Select.Slot Action Unit
   )
 
-_dropdown = SProxy :: SProxy "dropdown"
+_dropdown = Proxy :: Proxy "dropdown"
 
 type HTML = H.ComponentHTML Action Slots Aff
 
@@ -59,42 +54,43 @@ initialState =
 renderSelect :: State -> Select.State -> Select.HTML Action () Aff
 renderSelect state st =
   HH.div
-  ( Select.setRootProps [ class_ "inline-block"]
-  ) $ join
-  [ pure $ HH.input
-    ( Select.setInputProps
-      [ style "width: 20rem"
-      , HP.value state.value
-      , HP.placeholder "Autocomplete input"
-      ]
-    )
-  , guard st.isOpen $> HH.div
-    [ class_ "Dropdown"
-    ]
-    [ HH.div
-      ( Select.setMenuProps
-        [ class_ "overflow-y-auto"
-        , style "max-height: 10rem;"
+    ( Select.setRootProps [ class_ "inline-block" ]
+    ) $ join
+    [ pure $ HH.input
+        ( Select.setInputProps
+            [ style "width: 20rem"
+            , HP.value state.value
+            , HP.placeholder "Autocomplete input"
+            ]
+        )
+    , guard st.isOpen $> HH.div
+        [ class_ "Dropdown"
         ]
-      ) $ state.filteredItems # Array.mapWithIndex \index item ->
-      HH.div
-      ( Select.setItemProps index
-        [ class_ $ "py-1 px-3 cursor-pointer" <>
-            Monoid.guard (index == st.highlightedIndex) " bg-blue-300"
+        [ HH.div
+            ( Select.setMenuProps
+                [ class_ "overflow-y-auto"
+                , style "max-height: 10rem;"
+                ]
+            ) $ state.filteredItems # Array.mapWithIndex \index item ->
+            HH.div
+              ( Select.setItemProps index
+                  [ class_ $ "py-1 px-3 cursor-pointer" <>
+                      Monoid.guard (index == st.highlightedIndex) " bg-blue-300"
+                  ]
+              )
+              [ HH.text item ]
         ]
-      )
-      [ HH.text item ]
     ]
-  ]
 
 render :: State -> HTML
 render state =
   HH.slot _dropdown unit Select.component
-  { render: renderSelect state
-  , itemCount: Array.length state.filteredItems
-  } $ Just <<< HandleDropdown
+    { render: renderSelect state
+    , itemCount: Array.length state.filteredItems
+    }
+    HandleDropdown
 
-component :: H.Component HH.HTML Query Unit Void Aff
+component :: forall q. H.Component q Unit Void Aff
 component = H.mkComponent
   { initialState: const initialState
   , render
@@ -108,7 +104,7 @@ handleAction (HandleDropdown msg) = case msg of
     state <- H.get
     for_ (Array.index state.filteredItems index) \item ->
       H.modify_ $ _ { value = item }
-    void $ H.query _dropdown unit $ H.tell Select.Close
+    void $ H.tell _dropdown unit Select.Close
   Select.InputValueChanged value -> do
     H.modify_ $ \state -> state
       { value = value
