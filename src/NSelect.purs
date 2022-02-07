@@ -20,7 +20,7 @@ module NSelect
 import Prelude
 
 import Data.Foldable (traverse_)
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), isJust)
 import Effect.Aff as Aff
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect)
@@ -28,7 +28,7 @@ import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
-import Halogen.Query.EventSource as ES
+import Halogen.Query.Event as QE
 import Unsafe.Coerce (unsafeCoerce)
 import Web.DOM.Element as Element
 import Web.DOM.ParentNode (QuerySelector(..), querySelector)
@@ -69,6 +69,7 @@ data Action pa cs m
   | ReceiveProps (Props pa cs m)
   | OnWindowMouseDown
   | OnWindowMouseUp
+  | OnWindowMouseMove
   | OnWindowDragEnd
   | OnMouseDownRoot
   | OnMouseDownToggle
@@ -85,6 +86,13 @@ type InnerState pa cs m =
   , clickedInside :: Boolean
   , isOpen :: Boolean
   , highlightedIndex :: Int
+  -- When we use the arrow keys, we want to prevent the mouse from stealing
+  -- the selection back if it is hovering over top of the dropdown. So when an
+  -- arrow key is pressed, we create a subscription that listens for a
+  -- mousemove event on the window. When this event is fired, we unsubscribe
+  -- and clean this value up. If this value is `Just`, we ignore the
+  -- `OnMouseEnterItem` action.
+  , mouseMoveSubscription :: Maybe H.SubscriptionId
   }
 
 initialState :: forall pa cs m. Props pa cs m -> InnerState pa cs m
@@ -93,6 +101,7 @@ initialState props =
   , clickedInside: false
   , isOpen: false
   , highlightedIndex: 0
+  , mouseMoveSubscription: Nothing
   }
 
 type State =
@@ -123,7 +132,7 @@ setRootProps
    . Array (HH.IProp (RootProps r) (Action pa cs m))
   -> Array (HH.IProp (RootProps r) (Action pa cs m))
 setRootProps props = props <>
-  [ HE.onMouseDown $ Just <<< const OnMouseDownRoot
+  [ HE.onMouseDown $ const OnMouseDownRoot
   ]
 
 type ToggleProps r =
@@ -136,7 +145,7 @@ setToggleProps
    . Array (HH.IProp (ToggleProps r) (Action pa cs m))
   -> Array (HH.IProp (ToggleProps r) (Action pa cs m))
 setToggleProps props = props <>
-  [ HE.onMouseDown $ Just <<< const OnMouseDownToggle
+  [ HE.onMouseDown $ const OnMouseDownToggle
   ]
 
 type InputProps r =
@@ -155,8 +164,8 @@ sharedInputProps
    . Array (HH.IProp (InputProps r) (Action pa cs m))
 sharedInputProps =
   [ HP.ref inputRef
-  , HE.onFocus $ Just <<< const OnFocusInput
-  , HE.onValueInput $ Just <<< OnValueInput
+  , HE.onFocus $ const OnFocusInput
+  , HE.onValueInput $ OnValueInput
   ]
 
 setInputProps
@@ -164,7 +173,7 @@ setInputProps
    . Array (HH.IProp (InputProps r) (Action pa cs m))
   -> Array (HH.IProp (InputProps r) (Action pa cs m))
 setInputProps props = props <> sharedInputProps <>
-  [ HE.onKeyDown $ Just <<< OnKeyDownInput
+  [ HE.onKeyDown $ OnKeyDownInput
   ]
 
 type KeyDownHandler pa = KE.KeyboardEvent -> pa
@@ -178,7 +187,7 @@ setInputProps'
   -> Array (HH.IProp (InputProps r) (Action pa cs m))
   -> Array (HH.IProp (InputProps r) (Action pa cs m))
 setInputProps' parentHandlers props = props <> sharedInputProps <>
-  [ HE.onKeyDown $ Just <<< OnKeyDownInput' parentHandlers.onKeyDown
+  [ HE.onKeyDown $ OnKeyDownInput' parentHandlers.onKeyDown
   ]
 
 menuRef :: H.RefLabel
@@ -207,8 +216,8 @@ setItemProps
   -> Array (HH.IProp (ItemProps r) (Action pa cs m))
 setItemProps index props = props <>
   [ HH.attr (HH.AttrName "data-nselect-item") (show index)
-  , HE.onClick $ Just <<< const (OnClickItem index)
-  , HE.onMouseEnter $ Just <<< const (OnMouseEnterItem index)
+  , HE.onClick $ const (OnClickItem index)
+  , HE.onMouseEnter $ const (OnMouseEnterItem index)
   ]
 
 render :: forall pa cs m. InnerState pa cs m -> HTML pa cs m
@@ -218,7 +227,7 @@ render state =
 component
   :: forall pa cs m
    . MonadAff m
-  => H.Component HH.HTML Query (Props pa cs m) (Message pa) m
+  => H.Component Query (Props pa cs m) (Message pa) m
 component = H.mkComponent
   { initialState
   , render
@@ -233,7 +242,8 @@ component = H.mkComponent
 handleVisibilityChange
   :: forall pa cs m
    . MonadEffect m
-  => Boolean -> DSL pa cs m Unit
+  => Boolean
+  -> DSL pa cs m Unit
 handleVisibilityChange isOpen = do
   state <- H.modify $ _ { isOpen = isOpen }
 
@@ -260,6 +270,13 @@ handleHighlightedIndexChange
   => Int
   -> DSL pa cs m Unit
 handleHighlightedIndexChange index = do
+  waitingForMouseMove <- H.gets $ isJust <<< _.mouseMoveSubscription
+  when (not waitingForMouseMove) do
+    win <- H.liftEffect Web.window
+    mouseMoveSubscription <- H.subscribe $
+      QE.eventListener ET.mousemove (Window.toEventTarget win)
+        (const $ Just OnWindowMouseMove)
+    H.modify_ _ { mouseMoveSubscription = Just mouseMoveSubscription }
   updateHighlightedIndex index
   scrollIntoViewIfNeeded index
 
@@ -279,11 +296,9 @@ scrollIntoViewIfNeeded index = do
       itemOffsetTop <- HTMLElement.offsetTop item
       itemOffsetHeight <- HTMLElement.offsetHeight item
 
-      if scrollTop + menuHeight < itemOffsetTop + itemOffsetHeight
-        then Element.setScrollTop (itemOffsetTop + itemOffsetHeight - menuHeight) menuEl
-        else if itemOffsetTop < scrollTop
-          then Element.setScrollTop itemOffsetTop menuEl
-          else pure unit
+      if scrollTop + menuHeight < itemOffsetTop + itemOffsetHeight then Element.setScrollTop (itemOffsetTop + itemOffsetHeight - menuHeight) menuEl
+      else if itemOffsetTop < scrollTop then Element.setScrollTop itemOffsetTop menuEl
+      else pure unit
   where
   selector = QuerySelector $ "[data-nselect-item='" <> show index <> "']"
 
@@ -296,13 +311,13 @@ handleAction = case _ of
   Init -> do
     win <- H.liftEffect Web.window
     void $ H.subscribe $
-      ES.eventListenerEventSource ET.mousedown (Window.toEventTarget win)
+      QE.eventListener ET.mousedown (Window.toEventTarget win)
         (const $ Just OnWindowMouseDown)
     void $ H.subscribe $
-      ES.eventListenerEventSource ET.mouseup (Window.toEventTarget win)
+      QE.eventListener ET.mouseup (Window.toEventTarget win)
         (const $ Just OnWindowMouseUp)
     void $ H.subscribe $
-      ES.eventListenerEventSource DET.dragend (Window.toEventTarget win)
+      QE.eventListener DET.dragend (Window.toEventTarget win)
         (const $ Just OnWindowDragEnd)
 
   ReceiveProps props -> do
@@ -316,14 +331,21 @@ handleAction = case _ of
   OnWindowMouseUp -> do
     -- Handle the case of mousedown on NSelect dropdown, mouseup on the outside.
     state <- H.get
-    when state.isOpen $
-      H.modify_ $ _ { clickedInside = false }
+    when state.isOpen
+      $ H.modify_
+      $ _ { clickedInside = false }
+
+  OnWindowMouseMove -> do
+    mouseMoveSubscription <- H.gets _.mouseMoveSubscription
+    H.modify_ _ { mouseMoveSubscription = Nothing }
+    traverse_ H.unsubscribe mouseMoveSubscription
 
   OnWindowDragEnd -> do
     -- Handle the case of dragging from NSelect dropdown to the outside.
     state <- H.get
-    when state.isOpen $
-      H.modify_ $ _ { clickedInside = false }
+    when state.isOpen
+      $ H.modify_
+      $ _ { clickedInside = false }
 
   OnMouseDownRoot -> do
     H.modify_ $ _ { clickedInside = true }
@@ -362,7 +384,9 @@ handleAction = case _ of
     H.raise $ Selected index
 
   OnMouseEnterItem index -> do
-    updateHighlightedIndex index
+    waitingForMouseMove <- H.gets $ isJust <<< _.mouseMoveSubscription
+    when (not waitingForMouseMove) do
+      updateHighlightedIndex index
 
   OnValueInput value -> do
     handleHighlightedIndexChange 0
@@ -370,7 +394,6 @@ handleAction = case _ of
 
   Raise pa -> do
     H.raise $ Emit pa
-
 
 handleQuery
   :: forall pa cs m a

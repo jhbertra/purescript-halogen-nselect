@@ -1,5 +1,18 @@
 { name = "purescript-halogen-nselect"
-, dependencies = [ "console", "effect", "halogen", "halogen-custom-element" ]
-, packages = ./packages.dhall
-, sources = [ "../src/**/*.purs", "src/**/*.purs" ]
+, dependencies =
+  [ "aff"
+  , "arrays"
+  , "control"
+  , "effect"
+  , "foldable-traversable"
+  , "halogen"
+  , "halogen-custom-element"
+  , "halogen-nselect"
+  , "prelude"
+  , "strings"
+  , "web-events"
+  , "web-uievents"
+  ]
+, packages = ../packages.dhall
+, sources = [ "src/**/*.purs" ]
 }
